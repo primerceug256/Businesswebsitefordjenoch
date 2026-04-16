@@ -1,91 +1,32 @@
-"use client";
+import { uploadFile } from "@/lib/upload";
 
-import { useState } from "react";
-import { Upload, Music, Loader, CheckCircle } from "lucide-react";
-import { motion } from "motion/react";
-import { supabase } from "@/utils/supabase/info";
+const handleUpload = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB (realistic)
+  if (!selectedFile) {
+    setError("Select a file");
+    return;
+  }
 
-export function MusicUploadForm({ onSuccess }: { onSuccess: () => void }) {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [title, setTitle] = useState("");
-  const [artist, setArtist] = useState("DJ ENOCH PRO");
-  const [genre, setGenre] = useState("Mix");
-  const [duration, setDuration] = useState("");
-  const [releaseDate, setReleaseDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
+  setUploading(true);
+  setUploadProgress(0);
 
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadSuccess, setUploadSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  try {
+    const url = await uploadFile(selectedFile, "music", setUploadProgress);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    await supabase.from("music").insert([
+      {
+        title: formData.title,
+        artist: formData.artist,
+        file_url: url,
+      },
+    ]);
 
-    if (!file) return;
+    setUploadSuccess(true);
 
-    if (file.size > MAX_FILE_SIZE) {
-      setError("File too large (max 100MB)");
-      return;
-    }
-
-    if (!file.type.startsWith("audio/")) {
-      setError("Only audio files allowed");
-      return;
-    }
-
-    setSelectedFile(file);
-    setError(null);
-
-    if (!title) {
-      setTitle(file.name.replace(/\.[^/.]+$/, ""));
-    }
-  };
-
-  const handleUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!selectedFile) {
-      setError("Select a file first");
-      return;
-    }
-
-    setUploading(true);
-    setError(null);
-    setUploadProgress(10);
-
-    const filePath = `tracks/${Date.now()}-${selectedFile.name}`;
-
-    try {
-      // Upload to Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from("music")
-        .upload(filePath, selectedFile);
-
-      if (uploadError) throw uploadError;
-
-      setUploadProgress(70);
-
-      // Get public URL
-      const { data } = supabase.storage
-        .from("music")
-        .getPublicUrl(filePath);
-
-      setUploadProgress(85);
-
-      // Save to database
-      const { error: dbError } = await supabase.from("music").insert([
-        {
-          title,
-          artist,
-          genre,
-          duration,
-          release_date: releaseDate,
-          file_url: data.publicUrl,
-        },
-      ]);
-
-      if (dbError) throw dbError;
+  } catch {
+    setError("Upload failed");
+  } finally {
+    setUploading(false);
+  }
+};
