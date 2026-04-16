@@ -287,3 +287,131 @@ export function MusicUploadForm({ onSuccess }: { onSuccess: () => void }) {
     </>
   );
 }
+"use client";
+
+import { useState } from "react";
+import { supabase } from "@/utils/supabase/info";
+
+export default function MusicUploadForm() {
+  const [file, setFile] = useState<File | null>(null);
+  const [title, setTitle] = useState("");
+  const [artist, setArtist] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  const handleUpload = async () => {
+    if (!file) {
+      alert("Please select a file");
+      return;
+    }
+
+    if (!title || !artist) {
+      alert("Please fill all fields");
+      return;
+    }
+
+    // 🚫 Prevent your main issue
+    if (file.size > 50 * 1024 * 1024) {
+      alert("File too large. Max 50MB");
+      return;
+    }
+
+    setUploading(true);
+    setProgress(10);
+
+    const filePath = `tracks/${Date.now()}-${file.name}`;
+
+    try {
+      // Upload file
+      const { data, error } = await supabase.storage
+        .from("music")
+        .upload(filePath, file);
+
+      if (error) throw error;
+
+      setProgress(70);
+
+      // Get public URL
+      const { data: publicUrl } = supabase.storage
+        .from("music")
+        .getPublicUrl(filePath);
+
+      setProgress(85);
+
+      // Save metadata (if you have a table like "music")
+      const { error: dbError } = await supabase.from("music").insert([
+        {
+          title,
+          artist,
+          file_url: publicUrl.publicUrl,
+        },
+      ]);
+
+      if (dbError) throw dbError;
+
+      setProgress(100);
+
+      alert("Upload successful!");
+
+      // Reset form
+      setFile(null);
+      setTitle("");
+      setArtist("");
+      setProgress(0);
+
+    } catch (err: any) {
+      console.error(err.message);
+      alert("Upload failed. Check network or file size.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="p-4 bg-gray-900 text-white rounded-xl">
+      <h2 className="text-xl font-bold mb-4">Upload Music</h2>
+
+      <input
+        type="text"
+        placeholder="Song Title"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        className="block w-full p-2 mb-3 text-black"
+      />
+
+      <input
+        type="text"
+        placeholder="Artist Name"
+        value={artist}
+        onChange={(e) => setArtist(e.target.value)}
+        className="block w-full p-2 mb-3 text-black"
+      />
+
+      <input
+        type="file"
+        onChange={(e) => setFile(e.target.files?.[0] || null)}
+        className="mb-3"
+      />
+
+      <button
+        onClick={handleUpload}
+        disabled={uploading}
+        className="bg-blue-600 px-4 py-2 rounded"
+      >
+        {uploading ? "Uploading..." : "Upload"}
+      </button>
+
+      {/* Progress Bar */}
+      {uploading && (
+        <div className="w-full bg-gray-700 mt-4 rounded">
+          <div
+            className="bg-green-500 text-center text-sm p-1"
+            style={{ width: `${progress}%` }}
+          >
+            {progress}%
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
