@@ -13,7 +13,7 @@ export default function UploadMusic() {
     }
 
     // 🚫 limit size (important for your issue)
-    if (file.size > 50 * 1024 * 1024) {
+    if (file.size > 500 * 1024 * 1024) {
       alert("File too large (max 50MB)");
       return;
     }
