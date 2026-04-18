@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Upload, Package, Loader } from "lucide-react";
+import { createClient } from "@supabase/supabase-js";
 import { projectId, publicAnonKey } from "/utils/supabase/info";
+
+const supabase = createClient(`https://${projectId}.supabase.co`, publicAnonKey);
 
 export function SoftwareUploadForm({ onSuccess }: { onSuccess: () => void }) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
-  const [price, setPrice] = useState("15000");
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -13,38 +15,51 @@ export function SoftwareUploadForm({ onSuccess }: { onSuccess: () => void }) {
     e.preventDefault();
     if (!selectedFile) return;
     setUploading(true);
+    setProgress(10);
 
-    const data = new FormData();
-    data.append("file", selectedFile);
-    data.append("title", title || selectedFile.name);
-    data.append("price", price);
-    data.append("platform", "Windows");
+    try {
+      const fileName = `${Date.now()}-${selectedFile.name.replace(/\s/g, '_')}`;
+      const { error: uploadError } = await supabase.storage
+        .from('make-98d801c7-software')
+        .upload(fileName, selectedFile);
 
-    const xhr = new XMLHttpRequest();
-    xhr.upload.onprogress = (e) => setProgress(Math.round((e.loaded / e.total) * 100));
-    xhr.onload = () => {
-      if (xhr.status === 200) { alert("Software Uploaded!"); onSuccess(); window.location.reload(); }
-      else alert("Upload failed.");
-      setUploading(false);
-    };
-    xhr.open("POST", `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/software/upload`);
-    xhr.setRequestHeader("Authorization", `Bearer ${publicAnonKey}`);
-    xhr.send(data);
+      if (uploadError) throw uploadError;
+      setProgress(60);
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('make-98d801c7-software')
+        .getPublicUrl(fileName);
+
+      const { error: dbError } = await supabase
+        .from('software')
+        .insert([{
+          title: title || selectedFile.name,
+          download_url: publicUrl,
+          price: "5500",
+          platform: "Windows/PC"
+        }]);
+
+      if (dbError) throw dbError;
+      alert("Software Published Successfully!");
+      onSuccess();
+      window.location.reload();
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally { setUploading(false); }
   };
 
   return (
     <form onSubmit={handleUpload} className="space-y-4">
-      <div className="p-4 border-2 border-dashed rounded-lg text-center bg-gray-50">
-        <input type="file" onChange={e => setSelectedFile(e.target.files?.[0] || null)} className="hidden" id="soft-upload-input" />
-        <label htmlFor="soft-upload-input" className="cursor-pointer">
-          <Package className="mx-auto mb-2 text-gray-400" />
-          <p className="text-sm text-gray-600">{selectedFile ? selectedFile.name : "Select Software File (Max 5GB)"}</p>
+      <div className="p-6 border-2 border-dashed rounded-2xl text-center bg-gray-50">
+        <input type="file" onChange={e => setSelectedFile(e.target.files?.[0] || null)} className="hidden" id="soft-file" />
+        <label htmlFor="soft-file" className="cursor-pointer block">
+          <Package className="mx-auto mb-2 text-orange-600" />
+          <p className="text-xs font-bold text-gray-500">{selectedFile ? selectedFile.name : "Select Software File"}</p>
         </label>
       </div>
-      <input required placeholder="Software Name" className="w-full p-3 border rounded" value={title} onChange={e => setTitle(e.target.value)} />
-      <input placeholder="Price (UGX)" className="w-full p-3 border rounded" value={price} onChange={e => setPrice(e.target.value)} />
-      <button disabled={uploading || !selectedFile} className="w-full bg-orange-600 py-3 text-white rounded font-bold disabled:opacity-50">
-        {uploading ? `Uploading ${progress}%` : "Start Software Upload"}
+      <input placeholder="Software Name" className="w-full p-4 bg-gray-100 rounded-xl font-bold" value={title} onChange={e => setTitle(e.target.value)} required />
+      <button disabled={uploading || !selectedFile} className="w-full bg-orange-600 text-white py-4 rounded-xl font-black uppercase">
+        {uploading ? `Uploading... ${progress}%` : "Publish Software (5,500 UGX)"}
       </button>
     </form>
   );
