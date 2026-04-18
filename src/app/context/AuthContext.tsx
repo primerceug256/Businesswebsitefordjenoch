@@ -1,11 +1,12 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { projectId, publicAnonKey } from '@/utils/supabase/info';
 
 interface User {
   id: string;
   email: string;
   name?: string;
   profilePhoto?: string;
+  isAdmin?: boolean;
   subscription?: {
     plan: string;
     expiresAt: string;
@@ -141,7 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const isAdmin = user?.email === 'primerceug@gmail.com';
+  const isAdmin = !!user?.isAdmin;
 
   return (
     <AuthContext.Provider value={{ user, isAdmin, login, signup, logout, updateProfile }}>
