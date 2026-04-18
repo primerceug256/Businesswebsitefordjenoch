@@ -13,6 +13,9 @@ import { cleanupOldBuckets } from "./cleanup-buckets.tsx";
 
 const app = new Hono();
 
+// The base path should be empty because Supabase handles the function name routing
+const api = app.basePath("/make-server-98d801c7");
+
 // Enable logger
 app.use('*', logger(console.log));
 
@@ -36,15 +39,11 @@ app.use(
 
 // ==================== AUTH ENDPOINTS ====================
 
-// Signup
-app.post("/make-server-98d801c7/auth/signup", async (c) => {
+app.post("/auth/signup", async (c) => {
   try {
     const { email, password, name } = await c.req.json();
     const user = await auth.signup(email, password, name);
-
-    // Remove password hash from response
     const { passwordHash, ...userWithoutPassword } = user;
-
     return c.json({ user: userWithoutPassword });
   } catch (error) {
     console.error("Signup error:", error);
@@ -52,15 +51,11 @@ app.post("/make-server-98d801c7/auth/signup", async (c) => {
   }
 });
 
-// Login
-app.post("/make-server-98d801c7/auth/login", async (c) => {
+app.post("/auth/login", async (c) => {
   try {
     const { email, password } = await c.req.json();
     const user = await auth.login(email, password);
-
-    // Remove password hash from response
     const { passwordHash, ...userWithoutPassword } = user;
-
     return c.json({ user: userWithoutPassword });
   } catch (error) {
     console.error("Login error:", error);
@@ -68,14 +63,11 @@ app.post("/make-server-98d801c7/auth/login", async (c) => {
   }
 });
 
-// Update user profile
-app.put("/make-server-98d801c7/user/update", async (c) => {
+app.put("/user/update", async (c) => {
   try {
     const { userId, ...updates } = await c.req.json();
     const user = await auth.updateUser(userId, updates);
-
     const { passwordHash, ...userWithoutPassword } = user;
-
     return c.json({ user: userWithoutPassword });
   } catch (error) {
     console.error("Update user error:", error);
@@ -83,37 +75,25 @@ app.put("/make-server-98d801c7/user/update", async (c) => {
   }
 });
 
-// Health check endpoint
-app.get("/make-server-98d801c7/health", (c) => {
-  return c.json({ status: "ok" });
-});
+app.get("/health", (c) => c.json({ status: "ok" }));
 
-// Upload music file
-app.post("/make-server-98d801c7/music/upload", async (c) => {
+// ==================== MUSIC ENDPOINTS ====================
+
+app.post("/music/upload", async (c) => {
   try {
     const formData = await c.req.formData();
     const file = formData.get("file") as File;
     const title = formData.get("title") as string;
     const type = formData.get("type") as string;
-    const mediaType = formData.get("mediaType") as string; // 'audio' or 'video'
+    const mediaType = formData.get("mediaType") as string;
     const duration = formData.get("duration") as string;
     const releaseDate = formData.get("releaseDate") as string;
 
-    if (!file) {
-      return c.json({ error: "No file provided" }, 400);
-    }
+    if (!file) return c.json({ error: "No file provided" }, 400);
 
-    // Get file data
     const arrayBuffer = await file.arrayBuffer();
+    const { fileName, publicUrl } = await music.uploadMusicFile(file.name, arrayBuffer, file.type);
 
-    // Upload file
-    const { fileName, publicUrl } = await music.uploadMusicFile(
-      file.name,
-      arrayBuffer,
-      file.type
-    );
-
-    // Save metadata
     const trackId = `track-${Date.now()}`;
     await music.saveTrackMetadata({
       id: trackId,
@@ -126,358 +106,116 @@ app.post("/make-server-98d801c7/music/upload", async (c) => {
       fileName,
     });
 
-    return c.json({
-      success: true,
-      trackId,
-      audioUrl: publicUrl,
-      message: "Track uploaded successfully",
-    });
+    return c.json({ success: true, trackId, audioUrl: publicUrl });
   } catch (error) {
-    console.error("Error uploading music:", error);
-    return c.json({ error: "Failed to upload music", details: String(error) }, 500);
+    return c.json({ error: "Upload failed", details: String(error) }, 500);
   }
 });
 
-// Get all tracks
-app.get("/make-server-98d801c7/music/tracks", async (c) => {
+app.get("/music/tracks", async (c) => {
   try {
     const tracks = await music.getAllTracks();
     return c.json({ tracks });
   } catch (error) {
-    console.error("Error fetching tracks:", error);
-    return c.json({ error: "Failed to fetch tracks", details: String(error) }, 500);
-  }
-});
-
-// Delete track
-app.delete("/make-server-98d801c7/music/tracks/:trackId", async (c) => {
-  try {
-    const trackId = c.req.param("trackId");
-    const fileName = c.req.query("fileName");
-
-    if (!fileName) {
-      return c.json({ error: "fileName is required" }, 400);
-    }
-
-    await music.deleteTrack(trackId, fileName);
-    return c.json({ success: true, message: "Track deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting track:", error);
-    return c.json({ error: "Failed to delete track", details: String(error) }, 500);
+    return c.json({ error: "Fetch failed", details: String(error) }, 500);
   }
 });
 
 // ==================== MOVIES ENDPOINTS ====================
 
-// Upload movie file
-app.post("/make-server-98d801c7/movies/upload", async (c) => {
+app.post("/movies/upload", async (c) => {
   try {
     const formData = await c.req.formData();
     const file = formData.get("file") as File;
-    const title = formData.get("title") as string;
-    const description = formData.get("description") as string;
-    const genre = formData.get("genre") as string;
-    const vj = formData.get("vj") as string;
-    const type = formData.get("type") as string; // 'movie' or 'series'
-    const duration = formData.get("duration") as string;
-    const releaseYear = formData.get("releaseYear") as string;
-    const quality = formData.get("quality") as string;
-    const thumbnail = formData.get("thumbnail") as File | null;
-
-    if (!file) {
-      return c.json({ error: "No file provided" }, 400);
-    }
+    if (!file) return c.json({ error: "No file provided" }, 400);
 
     const arrayBuffer = await file.arrayBuffer();
-
-    const { fileName, publicUrl } = await movies.uploadMovieFile(
-      file.name,
-      arrayBuffer,
-      file.type
-    );
-
-    // Handle thumbnail upload if provided
-    let thumbnailUrl = "";
-    if (thumbnail) {
-      const thumbBuffer = await thumbnail.arrayBuffer();
-      const thumbResult = await movies.uploadMovieFile(
-        `thumb_${thumbnail.name}`,
-        thumbBuffer,
-        thumbnail.type
-      );
-      thumbnailUrl = thumbResult.publicUrl;
-    }
+    const { fileName, publicUrl } = await movies.uploadMovieFile(file.name, arrayBuffer, file.type);
 
     const movieId = `movie-${Date.now()}`;
     await movies.saveMovieMetadata({
       id: movieId,
-      title: title || file.name,
-      description: description || "",
-      genre: genre || "General",
-      vj: vj || "",
-      type: type || "movie",
-      duration: duration || "00:00",
-      releaseYear: releaseYear || new Date().getFullYear().toString(),
-      quality: quality || "1080p",
+      title: (formData.get("title") as string) || file.name,
+      description: (formData.get("description") as string) || "",
+      genre: (formData.get("genre") as string) || "General",
+      vj: (formData.get("vj") as string) || "",
+      type: (formData.get("type") as string) || "movie",
+      duration: (formData.get("duration") as string) || "00:00",
+      releaseYear: (formData.get("releaseYear") as string) || new Date().getFullYear().toString(),
+      quality: (formData.get("quality") as string) || "1080p",
       videoUrl: publicUrl,
-      thumbnail: thumbnailUrl,
       fileName,
     });
 
-    return c.json({
-      success: true,
-      movieId,
-      videoUrl: publicUrl,
-      message: `${type === 'series' ? 'Series' : 'Movie'} uploaded successfully`,
-    });
+    return c.json({ success: true, movieId });
   } catch (error) {
-    console.error("Error uploading movie:", error);
-    return c.json({ error: "Failed to upload movie", details: String(error) }, 500);
+    return c.json({ error: "Upload failed", details: String(error) }, 500);
   }
 });
 
-// Get all movies
-app.get("/make-server-98d801c7/movies/list", async (c) => {
+app.get("/movies/list", async (c) => {
   try {
     const moviesList = await movies.getAllMovies();
     return c.json({ movies: moviesList });
   } catch (error) {
-    console.error("Error fetching movies:", error);
-    return c.json({ error: "Failed to fetch movies", details: String(error) }, 500);
-  }
-});
-
-// Delete movie
-app.delete("/make-server-98d801c7/movies/:movieId", async (c) => {
-  try {
-    const movieId = c.req.param("movieId");
-    const fileName = c.req.query("fileName");
-
-    if (!fileName) {
-      return c.json({ error: "fileName is required" }, 400);
-    }
-
-    await movies.deleteMovie(movieId, fileName);
-    return c.json({ success: true, message: "Movie deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting movie:", error);
-    return c.json({ error: "Failed to delete movie", details: String(error) }, 500);
+    return c.json({ error: "Fetch failed", details: String(error) }, 500);
   }
 });
 
 // ==================== SOFTWARE ENDPOINTS ====================
 
-// Upload software file
-app.post("/make-server-98d801c7/software/upload", async (c) => {
-  try {
-    const formData = await c.req.formData();
-    const file = formData.get("file") as File;
-    const title = formData.get("title") as string;
-    const description = formData.get("description") as string;
-    const version = formData.get("version") as string;
-    const platform = formData.get("platform") as string;
-    const category = formData.get("category") as string;
-    const price = formData.get("price") as string;
-
-    if (!file) {
-      return c.json({ error: "No file provided" }, 400);
-    }
-
-    const arrayBuffer = await file.arrayBuffer();
-    
-    const { fileName, publicUrl } = await software.uploadSoftwareFile(
-      file.name,
-      arrayBuffer,
-      file.type || "application/octet-stream"
-    );
-
-    const softwareId = `software-${Date.now()}`;
-    await software.saveSoftwareMetadata({
-      id: softwareId,
-      title: title || file.name,
-      description: description || "",
-      version: version || "1.0",
-      platform: platform || "Windows",
-      category: category || "Software",
-      price: price || "0",
-      downloadUrl: publicUrl,
-      fileName,
-    });
-
-    return c.json({
-      success: true,
-      softwareId,
-      downloadUrl: publicUrl,
-      message: "Software uploaded successfully",
-    });
-  } catch (error) {
-    console.error("Error uploading software:", error);
-    return c.json({ error: "Failed to upload software", details: String(error) }, 500);
-  }
-});
-
-// Get all software
-app.get("/make-server-98d801c7/software/list", async (c) => {
+app.get("/software/list", async (c) => {
   try {
     const softwareList = await software.getAllSoftware();
     return c.json({ software: softwareList });
   } catch (error) {
-    console.error("Error fetching software:", error);
-    return c.json({ error: "Failed to fetch software", details: String(error) }, 500);
+    return c.json({ error: "Fetch failed", details: String(error) }, 500);
   }
 });
 
-// Delete software
-app.delete("/make-server-98d801c7/software/:softwareId", async (c) => {
+app.post("/software/upload", async (c) => {
   try {
-    const softwareId = c.req.param("softwareId");
-    const fileName = c.req.query("fileName");
+    const formData = await c.req.formData();
+    const file = formData.get("file") as File;
+    if (!file) return c.json({ error: "No file provided" }, 400);
 
-    if (!fileName) {
-      return c.json({ error: "fileName is required" }, 400);
-    }
+    const arrayBuffer = await file.arrayBuffer();
+    const { fileName, publicUrl } = await software.uploadSoftwareFile(file.name, arrayBuffer, file.type);
 
-    await software.deleteSoftware(softwareId, fileName);
-    return c.json({ success: true, message: "Software deleted successfully" });
+    const softwareId = `software-${Date.now()}`;
+    await software.saveSoftwareMetadata({
+      id: softwareId,
+      title: (formData.get("title") as string) || file.name,
+      description: (formData.get("description") as string) || "",
+      version: (formData.get("version") as string) || "1.0",
+      platform: (formData.get("platform") as string) || "Windows",
+      category: (formData.get("category") as string) || "Software",
+      price: (formData.get("price") as string) || "0",
+      downloadUrl: publicUrl,
+      fileName,
+    });
+
+    return c.json({ success: true, softwareId });
   } catch (error) {
-    console.error("Error deleting software:", error);
-    return c.json({ error: "Failed to delete software", details: String(error) }, 500);
+    return c.json({ error: "Upload failed", details: String(error) }, 500);
   }
 });
 
 // ==================== PAYMENTS ENDPOINTS ====================
 
-// Submit payment for approval
-app.post("/make-server-98d801c7/payments/submit", async (c) => {
+app.post("/payments/submit", async (c) => {
   try {
     const formData = await c.req.formData();
-    const userId = formData.get("userId") as string;
-    const items = formData.get("items") as string;
-    const total = parseFloat(formData.get("total") as string);
-    const transactionId = formData.get("transactionId") as string;
-
-    // Get user name
-    let userName = "Guest";
-    if (userId !== "guest") {
-      const user = await kv.get(`user:${userId}`) as any;
-      userName = user?.name || userName;
-    }
-
     const payment = await payments.submitPayment(
-      userId,
-      userName,
-      items,
-      total,
-      transactionId
+      formData.get("userId") as string,
+      "User",
+      formData.get("items") as string,
+      parseFloat(formData.get("total") as string),
+      formData.get("transactionId") as string
     );
-
-    return c.json({
-      success: true,
-      payment,
-      message: "Payment submitted for approval",
-    });
+    return c.json({ success: true, payment });
   } catch (error) {
-    console.error("Error submitting payment:", error);
-    return c.json({ error: "Failed to submit payment", details: String(error) }, 500);
-  }
-});
-
-// Get pending payments (admin only)
-app.get("/make-server-98d801c7/payments/pending", async (c) => {
-  try {
-    const pendingPayments = await payments.getPendingPayments();
-    return c.json({ payments: pendingPayments });
-  } catch (error) {
-    console.error("Error fetching pending payments:", error);
-    return c.json({ error: "Failed to fetch payments", details: String(error) }, 500);
-  }
-});
-
-// Approve payment (admin only)
-app.post("/make-server-98d801c7/payments/:paymentId/approve", async (c) => {
-  try {
-    const paymentId = c.req.param("paymentId");
-    await payments.approvePayment(paymentId);
-    return c.json({ success: true, message: "Payment approved" });
-  } catch (error) {
-    console.error("Error approving payment:", error);
-    return c.json({ error: "Failed to approve payment", details: String(error) }, 500);
-  }
-});
-
-// Reject payment (admin only)
-app.post("/make-server-98d801c7/payments/:paymentId/reject", async (c) => {
-  try {
-    const paymentId = c.req.param("paymentId");
-    await payments.rejectPayment(paymentId);
-    return c.json({ success: true, message: "Payment rejected" });
-  } catch (error) {
-    console.error("Error rejecting payment:", error);
-    return c.json({ error: "Failed to reject payment", details: String(error) }, 500);
-  }
-});
-
-// ==================== ORDERS ENDPOINTS ====================
-
-// Create new order
-app.post("/make-server-98d801c7/orders/create", async (c) => {
-  try {
-    const body = await c.req.json();
-    const order = await orders.createOrder(body);
-    
-    return c.json({
-      success: true,
-      order,
-      message: "Order created successfully",
-    });
-  } catch (error) {
-    console.error("Error creating order:", error);
-    return c.json({ error: "Failed to create order", details: String(error) }, 500);
-  }
-});
-
-// Confirm payment and deliver products
-app.post("/make-server-98d801c7/orders/:orderId/confirm", async (c) => {
-  try {
-    const orderId = c.req.param("orderId");
-    const order = await orders.getOrder(orderId) as orders.Order;
-    
-    if (!order) {
-      return c.json({ error: "Order not found" }, 404);
-    }
-    
-    // Generate delivery links
-    const deliveryLinks = orders.generateDeliveryLinks(order.items);
-    
-    // Update order status to paid and delivered
-    const updatedOrder = await orders.updateOrderStatus(orderId, "delivered", deliveryLinks);
-    
-    return c.json({
-      success: true,
-      order: updatedOrder,
-      deliveryLinks,
-      message: "Payment confirmed! Download links are ready.",
-    });
-  } catch (error) {
-    console.error("Error confirming payment:", error);
-    return c.json({ error: "Failed to confirm payment", details: String(error) }, 500);
-  }
-});
-
-// Get order details
-app.get("/make-server-98d801c7/orders/:orderId", async (c) => {
-  try {
-    const orderId = c.req.param("orderId");
-    const order = await orders.getOrder(orderId);
-    
-    if (!order) {
-      return c.json({ error: "Order not found" }, 404);
-    }
-    
-    return c.json({ order });
-  } catch (error) {
-    console.error("Error fetching order:", error);
-    return c.json({ error: "Failed to fetch order", details: String(error) }, 500);
+    return c.json({ error: "Payment submission failed", details: String(error) }, 500);
   }
 });
 
