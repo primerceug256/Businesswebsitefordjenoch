@@ -18,6 +18,7 @@ export function SoftwareUploadForm({ onSuccess }: { onSuccess: () => void }) {
     setProgress(10);
 
     try {
+      // Logic: Universal Bucket + software/ folder
       const fileName = `software/${Date.now()}-${selectedFile.name.replace(/\s/g, '_')}`;
       
       const { error: uploadError } = await supabase.storage
@@ -25,7 +26,7 @@ export function SoftwareUploadForm({ onSuccess }: { onSuccess: () => void }) {
         .upload(fileName, selectedFile);
 
       if (uploadError) throw uploadError;
-      setProgress(70);
+      setProgress(60);
 
       const { data: { publicUrl } } = supabase.storage
         .from('make-98d801c7-music')
@@ -37,16 +38,14 @@ export function SoftwareUploadForm({ onSuccess }: { onSuccess: () => void }) {
           title: title || selectedFile.name,
           download_url: publicUrl,
           price: "5500",
-          platform: "Windows/PC"
+          platform: "PC/Mobile"
         }]);
 
       if (dbError) throw dbError;
-      alert("Software Published Successfully!");
+      alert("Software Published!");
       onSuccess();
       window.location.reload();
-    } catch (err: any) {
-      alert("Upload failed: " + err.message);
-    } finally { setUploading(false); }
+    } catch (err: any) { alert("Error: " + err.message); } finally { setUploading(false); }
   };
 
   return (
@@ -55,11 +54,11 @@ export function SoftwareUploadForm({ onSuccess }: { onSuccess: () => void }) {
         <input type="file" onChange={e => setSelectedFile(e.target.files?.[0] || null)} className="hidden" id="soft-up" />
         <label htmlFor="soft-up" className="cursor-pointer block">
           <Package className="mx-auto mb-2 text-orange-600 w-8 h-8" />
-          <p className="text-xs font-bold text-gray-900">{selectedFile ? selectedFile.name : "Select Software"}</p>
+          <p className="text-xs font-bold text-gray-900">{selectedFile ? selectedFile.name : "Select Software File"}</p>
         </label>
       </div>
       <input placeholder="Software Name" className="w-full p-4 bg-gray-100 rounded-xl font-bold" value={title} onChange={e => setTitle(e.target.value)} required />
-      <button disabled={uploading || !selectedFile} className="w-full bg-orange-600 text-white py-4 rounded-xl font-black uppercase">
+      <button disabled={uploading || !selectedFile} className="w-full bg-orange-600 text-white py-4 rounded-xl font-black uppercase shadow-lg">
         {uploading ? `Uploading... ${progress}%` : "Publish Software"}
       </button>
     </form>
