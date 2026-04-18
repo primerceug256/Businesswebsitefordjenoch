@@ -26,19 +26,26 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
+  // Load user from storage on boot
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
         setUser(JSON.parse(storedUser));
       } catch (e) {
+        console.error("Corrupt user data in storage, clearing...");
         localStorage.removeItem('user');
       }
     }
   }, []);
 
+  /**
+   * Defensive API Request Helper
+   * Checks Content-Type to prevent "Unexpected character" errors
+   */
   const apiRequest = async (path: string, options: RequestInit) => {
     const url = `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7${path}`;
+
     const response = await fetch(url, {
       ...options,
       headers: {
@@ -49,14 +56,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const contentType = response.headers.get("content-type");
-    if (contentType && contentType.indexOf("application/json") !== -1) {
+
+    if (contentType && contentType.includes("application/json")) {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Request failed');
       return data;
     } else {
-      // Handle non-JSON errors (like text 404s)
+      // Server returned plain text (like a 404 or raw error)
       const text = await response.text();
-      throw new Error(text || `Server error: ${response.status}`);
+      console.error("Non-JSON Server Response:", text);
+      throw new Error(`Server Error (${response.status}): ${text || 'Check backend console'}`);
     }
   };
 
