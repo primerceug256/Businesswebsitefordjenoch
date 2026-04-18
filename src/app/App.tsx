@@ -20,17 +20,13 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleAddToCart = (product: any) => {
-    setCartItems(prev => [...prev, { product, quantity: 1 }]);
+    setCartItems(prev => [...prev, { product, quantity: 1, id: Date.now().toString() }]);
     setIsCartOpen(true);
-  };
-
-  const handleRemoveItem = (id: string) => {
-    setCartItems(prev => prev.filter(item => item.product.id !== id));
   };
 
   return (
     <AdminAuthProvider>
-      <div className="min-h-screen bg-white text-black">
+      <div className="min-h-screen bg-white text-black selection:bg-orange-500 selection:text-white">
         <Header 
           cartCount={cartItems.length} 
           onCartClick={() => setIsCartOpen(true)} 
@@ -42,7 +38,7 @@ export default function App() {
           <Gallery />
           <FreeDownloads searchQuery={searchQuery} />
           <SoftwareSection onAddToCart={handleAddToCart} searchQuery={searchQuery} />
-          <Shop onAddToCart={handleAddToCart} searchQuery={searchQuery} />
+          <Shop onAddToCart={handleAddToCart} />
           <MoviesSection searchQuery={searchQuery} />
           <Services />
           <Contact />
@@ -54,7 +50,7 @@ export default function App() {
           onClose={() => setIsCartOpen(false)}
           items={cartItems}
           onUpdateQuantity={() => {}}
-          onRemoveItem={handleRemoveItem}
+          onRemoveItem={(id) => setCartItems(prev => prev.filter(i => i.product.id !== id))}
           onClearCart={() => setCartItems([])}
         />
         
