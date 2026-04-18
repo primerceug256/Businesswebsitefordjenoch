@@ -1,85 +1,176 @@
 import { useState } from "react";
-import { Menu, X, ShoppingCart, Youtube, Facebook, Instagram, Phone, User, LogOut } from "lucide-react";
-import { useAuth, AuthModal } from "./AdminAuth";
+import { Menu, X, ShoppingCart, Search, Phone, User } from "lucide-react";
 
-// TikTok Icon SVG
-const TikTokIcon = ({ size = 12 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.03 1.4-.54 2.79-1.51 3.79-1.46 1.47-3.82 1.96-5.75 1.13-1.44-.63-2.5-1.91-2.87-3.46-.3-1.27-.06-2.61.58-3.71.51-.88 1.41-1.56 2.38-1.81v4.16c-.44.17-.87.49-1.1.93-.31.61-.25 1.4.15 1.96.43.6 1.17.88 1.9.73.48-.1.9-.45 1.13-.88.13-.25.19-.52.21-.81.01-5.61-.01-11.23.02-16.84z"/>
-  </svg>
-);
+interface HeaderProps {
+  cartCount: number;
+  onCartClick: () => void;
+}
 
-export function Header({ cartCount, onCartClick, onSearch }: any) {
+export function Header({ cartCount, onCartClick }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<{show: boolean, mode: "login" | "signup"}>({show: false, mode: "login"});
-  const { user, signOut } = useAuth();
 
-  const scrollTo = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: "smooth" });
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth" });
+    }
     setIsMenuOpen(false);
   };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md">
-      {/* Top Socials Bar */}
-      <div className="bg-black text-white py-2 px-4 overflow-x-auto">
-        <div className="max-w-7xl mx-auto flex justify-between items-center text-[9px] font-black uppercase tracking-tighter whitespace-nowrap gap-4">
-          <div className="flex gap-3">
-            <a href="https://www.tiktok.com/@primerce1" target="_blank" className="flex items-center gap-1 hover:text-orange-500"><TikTokIcon /> TikTok Music</a>
-            <a href="https://www.tiktok.com/@primercemovies" target="_blank" className="flex items-center gap-1 hover:text-orange-500"><TikTokIcon /> TikTok Movies</a>
-            <a href="https://youtube.com/@primercemovies" target="_blank" className="flex items-center gap-1 hover:text-red-500"><Youtube size={12}/> YouTube</a>
+      {/* Top Bar */}
+      <div className="bg-gradient-to-r from-orange-500 to-orange-600">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between py-2 text-sm">
+            <div className="flex items-center gap-4 text-white">
+              <div className="flex items-center gap-2">
+                <Phone className="w-4 h-4" />
+                <span className="hidden sm:inline">+256 747 816 444</span>
+              </div>
+              <span className="hidden md:inline">|</span>
+              <span className="hidden md:inline">📍 Nyenje, Mukono</span>
+            </div>
+            <div className="flex items-center gap-4 text-white">
+              <button className="flex items-center gap-1 hover:opacity-80 transition-opacity">
+                <User className="w-4 h-4" />
+                <span className="hidden sm:inline">Account</span>
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-2 font-bold"><Phone size={10}/> +256 747 816 444</div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
-        <button onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})} className="text-2xl font-black italic tracking-tighter">
-          DJ ENOCH <span className="text-orange-600">PRO</span>
-        </button>
-
-        <nav className="hidden lg:flex gap-5 text-[10px] font-black uppercase tracking-widest text-gray-500">
-          <button onClick={() => scrollTo("about")} className="hover:text-orange-600">About</button>
-          <button onClick={() => scrollTo("gallery")} className="hover:text-orange-600">Gallery</button>
-          <button onClick={() => scrollTo("downloads")} className="hover:text-orange-600">Music</button>
-          <button onClick={() => scrollTo("software")} className="hover:text-orange-600">Software</button>
-          <button onClick={() => scrollTo("shop")} className="hover:text-orange-600">DJ Drops</button>
-          <button onClick={() => scrollTo("movies")} className="text-orange-600 hover:scale-110 transition-all font-black">Cinema</button>
-          <button onClick={() => scrollTo("contact")} className="hover:text-orange-600">Contact</button>
-        </nav>
-
-        <div className="flex items-center gap-2">
-          {user ? (
-            <button onClick={() => signOut()} className="text-[9px] font-black uppercase bg-red-50 text-red-600 px-3 py-2 rounded-xl">Logout</button>
-          ) : (
-            <button onClick={() => setAuthMode({show: true, mode: "login"})} className="text-[9px] font-black uppercase bg-gray-100 px-3 py-2 rounded-xl">Login</button>
-          )}
-
-          <button onClick={onCartClick} className="relative p-2 ml-1">
-            <ShoppingCart size={20} />
-            {cartCount > 0 && <span className="absolute top-0 right-0 bg-black text-white text-[8px] rounded-full w-4 h-4 flex items-center justify-center font-bold">{cartCount}</span>}
+      {/* Main Header */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between py-4">
+          {/* Logo */}
+          <button
+            onClick={() => scrollToSection("home")}
+            className="flex items-center gap-2 group"
+          >
+            <div className="text-2xl font-black text-gray-900">
+              DJ ENOCH <span className="text-orange-600">PRO</span>
+            </div>
           </button>
 
-          <button className="lg:hidden" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-            {isMenuOpen ? <X /> : <Menu />}
+          {/* Search Bar - Desktop */}
+          <div className="hidden lg:flex flex-1 max-w-2xl mx-8">
+            <div className="relative w-full">
+              <input
+                type="text"
+                placeholder="Search for DJ drops, software, and more..."
+                className="w-full px-4 py-3 pr-12 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              />
+              <button className="absolute right-0 top-0 bottom-0 px-6 bg-orange-600 hover:bg-orange-700 text-white rounded-r-lg transition-colors">
+                <Search className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center gap-6">
+            <button
+              onClick={() => scrollToSection("shop")}
+              className="text-gray-700 hover:text-orange-600 font-semibold transition-colors"
+            >
+              Shop
+            </button>
+            <button
+              onClick={() => scrollToSection("about")}
+              className="text-gray-700 hover:text-orange-600 font-semibold transition-colors"
+            >
+              About
+            </button>
+            <button
+              onClick={() => scrollToSection("services")}
+              className="text-gray-700 hover:text-orange-600 font-semibold transition-colors"
+            >
+              Services
+            </button>
+            <button
+              onClick={() => scrollToSection("contact")}
+              className="text-gray-700 hover:text-orange-600 font-semibold transition-colors"
+            >
+              Contact
+            </button>
+
+            {/* Cart Button */}
+            <button
+              onClick={onCartClick}
+              className="relative p-2 text-gray-700 hover:text-orange-600 transition-colors"
+            >
+              <ShoppingCart className="w-6 h-6" />
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-orange-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {cartCount}
+                </span>
+              )}
+            </button>
+          </nav>
+
+          {/* Mobile Menu Button */}
+          <button
+            className="md:hidden p-2 text-gray-700"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+          >
+            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
+        </div>
+
+        {/* Search Bar - Mobile */}
+        <div className="lg:hidden pb-4">
+          <div className="relative w-full">
+            <input
+              type="text"
+              placeholder="Search products..."
+              className="w-full px-4 py-2 pr-12 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+            <button className="absolute right-0 top-0 bottom-0 px-4 bg-orange-600 text-white rounded-r-lg">
+              <Search className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="lg:hidden bg-white border-t p-8 flex flex-col gap-6 text-center font-black uppercase text-sm shadow-2xl">
-          <button onClick={() => scrollTo("about")}>About</button>
-          <button onClick={() => scrollTo("downloads")}>Music Center</button>
-          <button onClick={() => scrollTo("movies")} className="text-orange-600">Cinema Zone</button>
-          <div className="flex justify-center gap-4 pt-4 border-t">
-             <a href="https://www.tiktok.com/@primerce1"><TikTokIcon size={20}/></a>
-             <a href="https://youtube.com/@primercemovies"><Youtube size={20}/></a>
-          </div>
+        <div className="md:hidden bg-white border-t border-gray-200">
+          <nav className="px-4 py-4 space-y-4">
+            <button
+              onClick={() => scrollToSection("shop")}
+              className="block w-full text-left text-gray-700 hover:text-orange-600 font-semibold py-2"
+            >
+              Shop
+            </button>
+            <button
+              onClick={() => scrollToSection("about")}
+              className="block w-full text-left text-gray-700 hover:text-orange-600 font-semibold py-2"
+            >
+              About
+            </button>
+            <button
+              onClick={() => scrollToSection("services")}
+              className="block w-full text-left text-gray-700 hover:text-orange-600 font-semibold py-2"
+            >
+              Services
+            </button>
+            <button
+              onClick={() => scrollToSection("contact")}
+              className="block w-full text-left text-gray-700 hover:text-orange-600 font-semibold py-2"
+            >
+              Contact
+            </button>
+            <button
+              onClick={onCartClick}
+              className="flex items-center gap-2 w-full text-left text-gray-700 hover:text-orange-600 font-semibold py-2"
+            >
+              <ShoppingCart className="w-5 h-5" />
+              Cart {cartCount > 0 && `(${cartCount})`}
+            </button>
+          </nav>
         </div>
       )}
-
-      {authMode.show && <AuthModal mode={authMode.mode} onClose={() => setAuthMode({show: false, mode: "login"})} />}
     </header>
   );
 }

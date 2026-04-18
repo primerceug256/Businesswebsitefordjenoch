@@ -1,114 +1,136 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from "react";
-import { createClient } from "@supabase/supabase-js";
-import { projectId, publicAnonKey } from "../../../utils/supabase/info";
+import { Lock, LogOut } from "lucide-react";
+import { motion } from "motion/react";
 
-const supabase = createClient(`https://${projectId}.supabase.co`, publicAnonKey);
-
-interface AuthContextType {
-  user: any;
-  isAdmin: boolean;
-  signOut: () => Promise<void>;
+interface AdminContextType {
+  isAuthenticated: boolean;
+  login: (password: string) => boolean;
+  logout: () => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AdminContext = createContext<AdminContextType | undefined>(undefined);
+
+// Admin password - In production, this should be environment variable
+const ADMIN_PASSWORD = "enoch2026";
 
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<any>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    const checkUser = (u: any) => {
-      setUser(u);
-      // Force lowercase check to prevent login errors
-      const email = u?.email?.toLowerCase() || "";
-      setIsAdmin(email === "primerceug@gmail.com");
-    };
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      checkUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      checkUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    // Check if user is already authenticated (stored in sessionStorage)
+    const authStatus = sessionStorage.getItem("admin_authenticated");
+    if (authStatus === "true") {
+      setIsAuthenticated(true);
+    }
   }, []);
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
-    window.location.reload();
+  const login = (password: string): boolean => {
+    if (password === ADMIN_PASSWORD) {
+      setIsAuthenticated(true);
+      sessionStorage.setItem("admin_authenticated", "true");
+      return true;
+    }
+    return false;
   };
 
-  if (loading) return <div className="h-screen w-screen flex items-center justify-center bg-black text-white font-black italic">DJ ENOCH PRO...</div>;
+  const logout = () => {
+    setIsAuthenticated(false);
+    sessionStorage.removeItem("admin_authenticated");
+  };
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin, signOut }}>
+    <AdminContext.Provider value={{ isAuthenticated, login, logout }}>
       {children}
-    </AuthContext.Provider>
+    </AdminContext.Provider>
   );
 }
 
-export function useAuth() {
-  const context = useContext(AuthContext);
-  return context || { user: null, isAdmin: false, signOut: async () => {} };
+export function useAdmin() {
+  const context = useContext(AdminContext);
+  if (!context) {
+    throw new Error("useAdmin must be used within AdminAuthProvider");
+  }
+  return context;
 }
 
-export function AuthModal({ onClose, mode = "login" }: { onClose: () => void, mode?: "login" | "signup" }) {
-  const [email, setEmail] = useState("");
+export function AdminLoginModal({ onClose }: { onClose: () => void }) {
   const [password, setPassword] = useState("");
-  const [isSignUp, setIsSignUp] = useState(mode === "signup");
-  const [authLoading, setAuthLoading] = useState(false);
+  const [error, setError] = useState("");
+  const { login } = useAdmin();
 
-  const handleAuth = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setAuthLoading(true);
-    
-    try {
-      const { error } = isSignUp 
-        ? await supabase.auth.signUp({ email, password })
-        : await supabase.auth.signInWithPassword({ email, password });
-
-      if (error) {
-        alert(error.message);
-      } else {
-        onClose();
-        if (isSignUp) alert("Account created! Log in now.");
-      }
-    } catch (err) {
-      alert("An unexpected error occurred.");
-    } finally {
-      setAuthLoading(false);
+    const success = login(password);
+    if (success) {
+      onClose();
+    } else {
+      setError("Invalid password");
+      setPassword("");
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
-      <div className="bg-white rounded-[40px] p-8 w-full max-w-md text-black shadow-2xl">
-        <h2 className="text-2xl font-black uppercase italic mb-1">
-          {isSignUp ? "Join" : "Welcome"} <span className="text-orange-600">Beast</span>
-        </h2>
-        <p className="text-gray-400 text-[10px] font-bold uppercase mb-6">
-          Admin Email: primerceug@gmail.com
-        </p>
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+        onClick={onClose}
+      />
 
-        <form onSubmit={handleAuth} className="space-y-4">
-          <input type="email" placeholder="Email" className="w-full p-4 bg-gray-100 rounded-2xl outline-none border-2 border-transparent focus:border-orange-500 font-bold" value={email} onChange={e => setEmail(e.target.value)} required />
-          <input type="password" placeholder="Password" className="w-full p-4 bg-gray-100 rounded-2xl outline-none border-2 border-transparent focus:border-orange-500 font-bold" value={password} onChange={e => setPassword(e.target.value)} required />
-          
-          <button disabled={authLoading} className="w-full bg-orange-600 text-white py-4 rounded-2xl font-black uppercase shadow-lg shadow-orange-600/30">
-            {authLoading ? "Waiting..." : isSignUp ? "Create Account" : "Login Now"}
+      {/* Modal */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-2xl shadow-2xl z-50 p-8"
+      >
+        <div className="flex items-center gap-3 mb-6">
+          <div className="bg-orange-600 p-3 rounded-lg">
+            <Lock className="w-6 h-6 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900">Admin Login</h2>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="password" className="block text-gray-900 font-semibold mb-2">
+              Password
+            </label>
+            <input
+              type="password"
+              id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:outline-none"
+              placeholder="Enter admin password"
+              autoFocus
+            />
+            {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
+          </div>
+
+          <button
+            type="submit"
+            className="w-full bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-lg font-bold transition-all"
+          >
+            Login
           </button>
         </form>
+      </motion.div>
+    </>
+  );
+}
 
-        <button onClick={() => setIsSignUp(!isSignUp)} className="w-full mt-6 text-[10px] font-black uppercase text-gray-400 hover:text-black">
-          {isSignUp ? "Switch to Login" : "Switch to Sign Up"}
-        </button>
-        <button onClick={onClose} className="w-full mt-4 text-[10px] font-black uppercase text-red-500">Close</button>
-      </div>
-    </div>
+export function AdminLogoutButton() {
+  const { isAuthenticated, logout } = useAdmin();
+
+  if (!isAuthenticated) return null;
+
+  return (
+    <button
+      onClick={logout}
+      className="fixed top-4 right-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 z-40 shadow-lg"
+    >
+      <LogOut className="w-4 h-4" />
+      Logout Admin
+    </button>
   );
 }

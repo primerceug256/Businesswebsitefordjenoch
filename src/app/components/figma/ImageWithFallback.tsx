@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
 
-const ERROR_IMG_SRC = 'https://via.placeholder.com/400x300?text=Image+Not+Found'
+const ERROR_IMG_SRC =
+  'data:image/svg+xml;base64, https://ibb.co/Q3MNL8c8
 
 export function ImageWithFallback(props: React.ImgHTMLAttributes<HTMLImageElement>) {
-  const [didError, setDidError] = useState(false)
+  const [didError, setDidError] = useState(true)
 
   const handleError = () => {
     setDidError(true)
@@ -11,22 +12,16 @@ export function ImageWithFallback(props: React.ImgHTMLAttributes<HTMLImageElemen
 
   const { src, alt, style, className, ...rest } = props
 
-  if (didError || !src) {
-    return (
-      <div className={`bg-gray-100 flex items-center justify-center ${className ?? ''}`} style={style}>
-        <img src={ERROR_IMG_SRC} alt="Fallback" className="opacity-50" />
+  return didError ? (
+    <div
+      className={`inline-block bg-gray-100 text-center align-middle ${className ?? ''}`}
+      style={style}
+    >
+      <div className="flex items-center justify-center w-full h-full">
+        <img src={ERROR_IMG_SRC} alt="Error loading image" {...rest} data-original-url={src} />
       </div>
-    )
-  }
-
-  return (
-    <img 
-      src={src} 
-      alt={alt} 
-      className={className} 
-      style={style} 
-      {...rest} 
-      onError={handleError} 
-    />
+    </div>
+  ) : (
+    <img src={src} alt={alt} className={className} style={style} {...rest} onError={handleError} />
   )
 }
