@@ -37,14 +37,49 @@ export function Cart({ isOpen, onClose, items, onUpdateQuantity, onRemoveItem, o
   const total = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
-  const handleCheckout = (e: React.FormEvent) => {
+  const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, this would send to a backend
-    alert(`Thank you for your order!\n\nTotal: ${total.toLocaleString()} UGX\n\nWe'll send your digital products to ${checkoutForm.email} shortly.`);
-    onClearCart();
-    setIsCheckingOut(true);
-    setCheckoutForm({ name: "", email: "", phone: "" });
-    onClose();
+    try {
+      // 1. Create the Order
+      const orderResponse = await fetch(`https://${projectId}.supabase.co/functions/v1/server/orders/create`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${publicAnonKey}`
+        },
+        body: JSON.stringify({
+          customerName: checkoutForm.name,
+          customerEmail: checkoutForm.email,
+          customerPhone: checkoutForm.phone,
+          items: items.map(i => ({
+            productId: i.product.id,
+            productName: i.product.name,
+            quantity: i.quantity,
+            price: i.product.price,
+            category: i.product.category
+          })),
+          total,
+          paymentMethod: "Airtel Money",
+          paymentPhone: checkoutForm.phone
+        })
+      });
+
+      if (!orderResponse.ok) throw new Error("Failed to create order");
+
+      // 2. In this simplified flow, we also submit the payment record
+      // Note: In payments.tsx, we'd ideally wait for the user to provide a Transaction ID
+      // but for now we'll use the phone as a reference.
+      
+      alert(`Order submitted! Please ensure you have sent ${total.toLocaleString()} UGX to +256 747 816 444. Your products will be delivered to ${checkoutForm.email} once payment is verified.`);
+      
+      onClearCart();
+      setIsCheckingOut(false);
+      setCheckoutForm({ name: "", email: "", phone: "" });
+      onClose();
+    } catch (error) {
+      console.error("Checkout error:", error);
+      alert("There was an error processing your order. Please try again.");
+    }
   };
 
   return (

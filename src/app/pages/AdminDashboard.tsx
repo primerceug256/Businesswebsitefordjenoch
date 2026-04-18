@@ -46,13 +46,33 @@ export default function AdminDashboard() {
   }, [user, isAdmin, navigate]);
 
   const fetchStats = async () => {
-    // Fetch admin stats
+    // Placeholder: You could add endpoints to count these in index.tsx
     setStats({ users: 125, movies: 450, music: 320, revenue: 15000000 });
   };
 
   const fetchPendingPayments = async () => {
-    // Fetch pending payment approvals
-    setPendingPayments([]);
+    try {
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/server/payments/pending`,
+        {
+          headers: { Authorization: `Bearer ${publicAnonKey}` },
+        }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setPendingPayments(data.payments || []);
+      }
+    } catch (error) {
+      console.error("Error fetching payments:", error);
+    }
+  };
+
+  const handleApprove = async (id: string) => {
+    await fetch(`https://${projectId}.supabase.co/functions/v1/server/payments/${id}/approve`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${publicAnonKey}` }
+    });
+    fetchPendingPayments();
   };
 
   const handleUpload = async () => {
