@@ -20,16 +20,17 @@ export function MovieUploadForm({ onSuccess }: { onSuccess: () => void }) {
     try {
       const fileExt = selectedFile.name.split('.').pop();
       const fileName = `movies/premium-${Date.now()}.${fileExt}`;
+      const STORAGE_BUCKET = "make-98d801c7-music";
       
       const { error: uploadError } = await supabase.storage
-        .from('primerce-fresh-hit-music') 
+        .from(STORAGE_BUCKET)
         .upload(fileName, selectedFile);
 
       if (uploadError) throw uploadError;
       setProgress(70);
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('primerce-fresh-hit-music')
+      const { data: { publicUrl } } = await supabase.storage
+        .from(STORAGE_BUCKET)
         .getPublicUrl(fileName);
 
       const { error: dbError } = await supabase

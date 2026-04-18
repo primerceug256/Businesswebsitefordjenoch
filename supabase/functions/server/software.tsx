@@ -6,7 +6,7 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
 
-const BUCKET_NAME = "make-98d801c7-software";
+const BUCKET_NAME = "make-98d801c7-music";
 
 // Initialize storage bucket
 export async function initializeSoftwareStorage() {
