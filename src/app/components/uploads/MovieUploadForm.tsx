@@ -18,20 +18,27 @@ export function MovieUploadForm({ onSuccess }: { onSuccess: () => void }) {
     setProgress(10);
 
     try {
-      // Logic: Universal Bucket + movies/ folder
-      const fileName = `movies/${Date.now()}-${selectedFile.name.replace(/\s/g, '_')}`;
+      // 1. Get the extension (mp4, mkv, etc)
+      const fileExt = selectedFile.name.split('.').pop();
       
+      // 2. Use your "premium" naming style inside the movies folder
+      // This will look like: movies/premium-1713421000.mp4
+      const fileName = `movies/premium-${Date.now()}.${fileExt}`;
+      
+      // 3. Upload to the specific bucket you requested
       const { error: uploadError } = await supabase.storage
-        .from('make-98d801c7-music')
+        .from('primerce fresh hit music') 
         .upload(fileName, selectedFile);
 
       if (uploadError) throw uploadError;
-      setProgress(60);
+      setProgress(70);
 
+      // 4. Get the public link
       const { data: { publicUrl } } = supabase.storage
-        .from('make-98d801c7-music')
+        .from('primerce fresh hit music')
         .getPublicUrl(fileName);
 
+      // 5. Save metadata to your 'movies' table
       const { error: dbError } = await supabase
         .from('movies')
         .insert([{
@@ -42,24 +49,56 @@ export function MovieUploadForm({ onSuccess }: { onSuccess: () => void }) {
         }]);
 
       if (dbError) throw dbError;
-      alert("Movie Published!");
+
+      alert("Movie Published as Premium!");
       onSuccess();
       window.location.reload();
-    } catch (err: any) { alert("Error: " + err.message); } finally { setUploading(false); }
+    } catch (err: any) {
+      console.error(err);
+      alert("Error: " + err.message + ". Check if bucket name matches exactly.");
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
     <form onSubmit={handleUpload} className="space-y-4">
       <div className="p-6 border-2 border-dashed rounded-2xl text-center bg-gray-50">
-        <input type="file" accept="video/*" onChange={e => setSelectedFile(e.target.files?.[0] || null)} className="hidden" id="mov-up" />
-        <label htmlFor="mov-up" className="cursor-pointer block">
+        <input 
+          type="file" 
+          accept="video/*" 
+          onChange={e => setSelectedFile(e.target.files?.[0] || null)} 
+          className="hidden" 
+          id="mov-up-premium" 
+        />
+        <label htmlFor="mov-up-premium" className="cursor-pointer block">
           <Film className="mx-auto mb-2 text-red-600 w-8 h-8" />
-          <p className="text-xs font-bold text-gray-900">{selectedFile ? selectedFile.name : "Select Video File"}</p>
+          <p className="text-xs font-bold text-gray-900">
+            {selectedFile ? selectedFile.name : "Select Premium Movie"}
+          </p>
         </label>
       </div>
-      <input placeholder="Movie Title" className="w-full p-4 bg-gray-100 rounded-xl font-bold" value={title} onChange={e => setTitle(e.target.value)} required />
-      <button disabled={uploading || !selectedFile} className="w-full bg-red-600 text-white py-4 rounded-xl font-black uppercase shadow-lg">
-        {uploading ? `Uploading... ${progress}%` : "Publish Movie"}
+
+      <input 
+        placeholder="Movie Title" 
+        className="w-full p-4 bg-gray-100 rounded-xl font-bold border-2 border-transparent focus:border-red-500 outline-none" 
+        value={title} 
+        onChange={e => setTitle(e.target.value)} 
+        required 
+      />
+
+      <button 
+        disabled={uploading || !selectedFile} 
+        className="w-full bg-red-600 hover:bg-red-700 text-white py-4 rounded-xl font-black uppercase shadow-lg shadow-red-600/30 transition-all"
+      >
+        {uploading ? (
+          <div className="flex items-center justify-center gap-2">
+            <Loader className="animate-spin w-4 h-4" />
+            Uploading Premium... {progress}%
+          </div>
+        ) : (
+          "Publish Premium Movie"
+        )}
       </button>
     </form>
   );
