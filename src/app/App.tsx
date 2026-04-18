@@ -1,4 +1,4 @@
-import { useState, Suspense } from "react";
+import { useState } from "react";
 import { Header } from "./components/Header";
 import { Hero } from "./components/Hero";
 import { About } from "./components/About";
@@ -20,44 +20,42 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleAddToCart = (product: any) => {
-    setCartItems(prev => [...prev, { product, quantity: 1, cartId: Date.now() }]);
+    setCartItems(prev => [...prev, { product, quantity: 1, id: Date.now() }]);
     setIsCartOpen(true);
   };
 
   return (
     <AdminAuthProvider>
-      <Suspense fallback={<div className="h-screen w-screen flex items-center justify-center bg-black text-white font-bold">DJ ENOCH PRO LOADING...</div>}>
-        <div className="min-h-screen bg-white text-black">
-          <Header 
-            cartCount={cartItems.length} 
-            onCartClick={() => setIsCartOpen(true)} 
-            onSearch={setSearchQuery} 
-          />
-          <main>
-            <Hero />
-            <About />
-            <Gallery />
-            <FreeDownloads searchQuery={searchQuery} />
-            <SoftwareSection onAddToCart={handleAddToCart} searchQuery={searchQuery} />
-            <Shop onAddToCart={handleAddToCart} />
-            <MoviesSection searchQuery={searchQuery} />
-            <Services />
-            <Contact />
-          </main>
-          <Footer />
-          
-          <Cart
-            isOpen={isCartOpen}
-            onClose={() => setIsCartOpen(false)}
-            items={cartItems}
-            onUpdateQuantity={() => {}}
-            onRemoveItem={(id) => setCartItems(prev => prev.filter(i => i.product.id !== id))}
-            onClearCart={() => setCartItems([])}
-          />
-          
-          <AdminUploadPanel />
-        </div>
-      </Suspense>
+      <div className="min-h-screen bg-white text-black font-sans">
+        <Header 
+          cartCount={cartItems.length} 
+          onCartClick={() => setIsCartOpen(true)} 
+          onSearch={setSearchQuery} 
+        />
+        <main className="pt-20">
+          <Hero />
+          <About />
+          <Gallery />
+          <FreeDownloads searchQuery={searchQuery} />
+          <SoftwareSection onAddToCart={handleAddToCart} />
+          <Shop onAddToCart={handleAddToCart} />
+          <MoviesSection searchQuery={searchQuery} />
+          <Services />
+          <Contact />
+        </main>
+        <Footer />
+        
+        <Cart
+          isOpen={isCartOpen}
+          onClose={() => setIsCartOpen(false)}
+          items={cartItems}
+          onUpdateQuantity={() => {}}
+          onRemoveItem={(id) => setCartItems(prev => prev.filter(i => i.id !== id))}
+          onClearCart={() => setCartItems([])}
+        />
+        
+        <AdminUploadPanel />
+      </div>
     </AdminAuthProvider>
   );
 }
