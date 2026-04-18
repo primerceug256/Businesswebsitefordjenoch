@@ -1,10 +1,14 @@
 import { useState } from "react";
-import { Upload, Music, Loader, CheckCircle } from "lucide-react";
+import { Upload, Music, Loader } from "lucide-react";
+import { createClient } from "@supabase/supabase-js";
 import { projectId, publicAnonKey } from "/utils/supabase/info";
+
+const supabase = createClient(`https://${projectId}.supabase.co`, publicAnonKey);
 
 export function MusicUploadForm({ onSuccess }: { onSuccess: () => void }) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [formData, setFormData] = useState({ title: "", duration: "" });
+  const [title, setTitle] = useState("");
+  const [duration, setDuration] = useState("");
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -12,60 +16,42 @@ export function MusicUploadForm({ onSuccess }: { onSuccess: () => void }) {
     e.preventDefault();
     if (!selectedFile) return;
     setUploading(true);
-    setProgress(5); // Start progress
+    setProgress(10);
 
     try {
-      // 1. Upload File Directly to Supabase Storage
-      const fileExt = selectedFile.name.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
-      const bucketName = "make-98d801c7-music";
-      
-      const uploadUrl = `https://${projectId}.supabase.co/storage/v1/object/${bucketName}/${fileName}`;
-      
-      const uploadResponse = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${publicAnonKey}`,
-          'Content-Type': selectedFile.type,
-          'x-upsert': 'true'
-        },
-        body: selectedFile
-      });
+      // 1. Upload File to Storage
+      const fileName = `${Date.now()}-${selectedFile.name.replace(/\s/g, '_')}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('make-98d801c7-music')
+        .upload(fileName, selectedFile);
 
-      if (!uploadResponse.ok) throw new Error("Storage upload failed");
-      setProgress(70);
+      if (uploadError) throw uploadError;
+      setProgress(60);
 
-      // 2. Get the Public URL
-      const publicUrl = `https://${projectId}.supabase.co/storage/v1/object/public/${bucketName}/${fileName}`;
+      // 2. Get the Link
+      const { data: { publicUrl } } = supabase.storage
+        .from('make-98d801c7-music')
+        .getPublicUrl(fileName);
 
-      // 3. Save the Metadata (Title, Duration) to your database
-      const metadataResponse = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/music/upload`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${publicAnonKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          title: formData.title || selectedFile.name,
-          type: "Latest Mix",
-          duration: formData.duration || "00:00",
-          audioUrl: publicUrl,
-          fileName: fileName
-        })
-      });
+      // 3. Save to Database Table
+      const { error: dbError } = await supabase
+        .from('music_tracks')
+        .insert([{
+          title: title || selectedFile.name,
+          audio_url: publicUrl,
+          duration: duration || "NON-STOP",
+          type: "Latest Mix"
+        }]);
 
-      if (metadataResponse.ok) {
-        setProgress(100);
-        alert("Upload Successful!");
-        onSuccess();
-        window.location.reload();
-      } else {
-        throw new Error("Metadata save failed");
-      }
+      if (dbError) throw dbError;
 
-    } catch (err) {
-      console.error(err);
-      alert("Upload failed. Please ensure you ran the SQL script in Step 1.");
+      setProgress(100);
+      alert("Mix Published Successfully!");
+      onSuccess();
+      window.location.reload();
+
+    } catch (err: any) {
+      alert("Error: " + (err.message || "Check SQL Step 1"));
     } finally {
       setUploading(false);
     }
@@ -73,56 +59,18 @@ export function MusicUploadForm({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <form onSubmit={handleUpload} className="space-y-4">
-      <div className="p-6 border-2 border-dashed rounded-xl text-center bg-gray-50 hover:bg-purple-50 transition-colors">
-        <input 
-          type="file" 
-          accept="audio/*" 
-          onChange={e => setSelectedFile(e.target.files?.[0] || null)} 
-          className="hidden" 
-          id="music-upload-field" 
-        />
-        <label htmlFor="music-upload-field" className="cursor-pointer block">
-          <Upload className="mx-auto mb-2 text-purple-600 w-8 h-8" />
-          <p className="font-medium text-gray-900">
-            {selectedFile ? selectedFile.name : "Select DJ Mix (No size limit)"}
-          </p>
-          <p className="text-xs text-gray-500 mt-1">MP3, WAV, or M4A</p>
+      <div className="p-6 border-2 border-dashed rounded-2xl text-center bg-gray-50">
+        <input type="file" accept="audio/*" onChange={e => setSelectedFile(e.target.files?.[0] || null)} className="hidden" id="mix-file" />
+        <label htmlFor="mix-file" className="cursor-pointer block">
+          <Upload className="mx-auto mb-2 text-purple-600" />
+          <p className="text-xs font-bold text-gray-500">{selectedFile ? selectedFile.name : "Tap to Select Mix File"}</p>
         </label>
       </div>
-
-      <div className="space-y-2">
-        <label className="text-sm font-semibold text-gray-700">Track Title</label>
-        <input 
-          required 
-          placeholder="e.g. DJ ENOCH - DANCEHALL VOL 3" 
-          className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" 
-          value={formData.title} 
-          onChange={e => setFormData({...formData, title: e.target.value})} 
-        />
-      </div>
-
-      <div className="space-y-2">
-        <label className="text-sm font-semibold text-gray-700">Duration (Optional)</label>
-        <input 
-          placeholder="e.g. 1:20:00" 
-          className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" 
-          value={formData.duration} 
-          onChange={e => setFormData({...formData, duration: e.target.value})} 
-        />
-      </div>
-
-      <button 
-        disabled={uploading || !selectedFile} 
-        className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-xl font-bold disabled:opacity-50 shadow-lg transition-all"
-      >
-        {uploading ? (
-          <div className="flex items-center justify-center gap-2">
-            <Loader className="animate-spin w-5 h-5" />
-            Uploading... {progress}%
-          </div>
-        ) : (
-          "Publish Mix Now"
-        )}
+      <input placeholder="Mix Title" className="w-full p-4 bg-gray-100 rounded-xl font-bold" value={title} onChange={e => setTitle(e.target.value)} required />
+      <input placeholder="Duration (e.g. 1:15:00)" className="w-full p-4 bg-gray-100 rounded-xl font-bold" value={duration} onChange={e => setDuration(e.target.value)} />
+      
+      <button disabled={uploading || !selectedFile} className="w-full bg-purple-600 text-white py-4 rounded-xl font-black uppercase shadow-lg">
+        {uploading ? `Uploading... ${progress}%` : "Publish to Music Center"}
       </button>
     </form>
   );
