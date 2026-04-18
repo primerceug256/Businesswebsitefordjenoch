@@ -27,67 +27,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
         setUser(JSON.parse(storedUser));
+      } catch (e) {
+        localStorage.removeItem('user');
       }
-    } catch (e) {
-      console.error("Failed to parse stored user", e);
-      localStorage.removeItem('user');
     }
   }, []);
 
-  const getApiUrl = (path: string) => `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7${path}`;
-
-  const login = async (email: string, password: string) => {
-    const response = await fetch(getApiUrl('/auth/login'), {
-      method: 'POST',
+  const apiRequest = async (path: string, options: RequestInit) => {
+    const url = `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7${path}`;
+    const response = await fetch(url, {
+      ...options,
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${publicAnonKey}`,
+        ...options.headers,
       },
-      body: JSON.stringify({ email, password }),
     });
 
-    if (!response.ok) {
-      let errorMsg = 'Login failed';
-      try {
-        const data = await response.json();
-        errorMsg = data.error || errorMsg;
-      } catch (e) {
-        errorMsg = `Server error (${response.status})`;
-      }
-      throw new Error(errorMsg);
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.indexOf("application/json") !== -1) {
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Request failed');
+      return data;
+    } else {
+      // Handle non-JSON errors (like text 404s)
+      const text = await response.text();
+      throw new Error(text || `Server error: ${response.status}`);
     }
+  };
 
-    const data = await response.json();
+  const login = async (email: string, password: string) => {
+    const data = await apiRequest('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
     setUser(data.user);
     localStorage.setItem('user', JSON.stringify(data.user));
   };
 
   const signup = async (email: string, password: string, name: string) => {
-    const response = await fetch(getApiUrl('/auth/signup'), {
+    const data = await apiRequest('/auth/signup', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${publicAnonKey}`,
-      },
       body: JSON.stringify({ email, password, name }),
     });
-
-    if (!response.ok) {
-      let errorMsg = 'Signup failed';
-      try {
-        const data = await response.json();
-        errorMsg = data.error || errorMsg;
-      } catch (e) {
-        errorMsg = `Server error (${response.status})`;
-      }
-      throw new Error(errorMsg);
-    }
-
-    const data = await response.json();
     setUser(data.user);
     localStorage.setItem('user', JSON.stringify(data.user));
   };
@@ -99,21 +85,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateProfile = async (data: Partial<User>) => {
     if (!user) return;
-
-    const response = await fetch(getApiUrl('/user/update'), {
+    const result = await apiRequest('/user/update', {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${publicAnonKey}`,
-      },
       body: JSON.stringify({ userId: user.id, ...data }),
     });
-
-    if (!response.ok) throw new Error('Update failed');
-
-    const updatedUser = { ...user, ...data };
-    setUser(updatedUser);
-    localStorage.setItem('user', JSON.stringify(updatedUser));
+    setUser(result.user);
+    localStorage.setItem('user', JSON.stringify(result.user));
   };
 
   const isAdmin = user?.email === 'primerceug@gmail.com';
@@ -127,8 +104,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (context === undefined) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 }
