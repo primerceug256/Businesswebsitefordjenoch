@@ -68,21 +68,31 @@ export async function getAllOrders() {
   return orders;
 }
 
+// Software download links (in a real app, these would be in Supabase Storage)
+export const SOFTWARE_LINKS = {
+  "software-1": "https://drive.google.com/file/d/YOUR_SONY_ACID_PRO_LINK/view?usp=sharing",
+  "software-2": "https://drive.google.com/file/d/YOUR_SONY_VEGAS_PRO_LINK/view?usp=sharing",
+  "software-3": "https://drive.google.com/file/d/YOUR_VIRTUAL_DJ_LINK/view?usp=sharing",
+};
+
+// DJ Drop download links (in a real app, these would be in Supabase Storage)
+export const DROP_LINKS = {
+  "drop-1": "https://drive.google.com/file/d/YOUR_SIGNATURE_DROP_LINK/view?usp=sharing",
+  "drop-2": "https://drive.google.com/file/d/YOUR_PARTY_DROP_LINK/view?usp=sharing",
+  "drop-3": "https://drive.google.com/file/d/YOUR_CLUB_DROP_LINK/view?usp=sharing",
+};
+
 // Generate delivery links for an order
-export async function generateDeliveryLinks(items: OrderItem[]) {
+export function generateDeliveryLinks(items: OrderItem[]) {
   const deliveryLinks: { [productId: string]: string } = {};
   
-  for (const item of items) {
+  items.forEach(item => {
     if (item.category === "software") {
-      // Fetch dynamic metadata saved during admin upload
-      const softwareData = await kv.get(`software:${item.productId}`);
-      deliveryLinks[item.productId] = softwareData?.downloadUrl || "#";
-    } else {
-      // Fallback for other categories (like drops if stored as tracks)
-      const trackData = await kv.get(`track:${item.productId}`);
-      deliveryLinks[item.productId] = trackData?.audioUrl || "#";
+      deliveryLinks[item.productId] = SOFTWARE_LINKS[item.productId as keyof typeof SOFTWARE_LINKS] || "#";
+    } else if (item.category === "drop") {
+      deliveryLinks[item.productId] = DROP_LINKS[item.productId as keyof typeof DROP_LINKS] || "#";
     }
-  }
+  });
   
   return deliveryLinks;
 }

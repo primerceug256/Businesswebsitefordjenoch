@@ -37,7 +37,7 @@ app.use(
 // ==================== AUTH ENDPOINTS ====================
 
 // Signup
-app.post("/auth/signup", async (c) => {
+app.post("/make-server-98d801c7/auth/signup", async (c) => {
   try {
     const { email, password, name } = await c.req.json();
     const user = await auth.signup(email, password, name);
@@ -53,7 +53,7 @@ app.post("/auth/signup", async (c) => {
 });
 
 // Login
-app.post("/auth/login", async (c) => {
+app.post("/make-server-98d801c7/auth/login", async (c) => {
   try {
     const { email, password } = await c.req.json();
     const user = await auth.login(email, password);
@@ -69,7 +69,7 @@ app.post("/auth/login", async (c) => {
 });
 
 // Update user profile
-app.put("/user/update", async (c) => {
+app.put("/make-server-98d801c7/user/update", async (c) => {
   try {
     const { userId, ...updates } = await c.req.json();
     const user = await auth.updateUser(userId, updates);
@@ -84,12 +84,12 @@ app.put("/user/update", async (c) => {
 });
 
 // Health check endpoint
-app.get("/health", (c) => {
+app.get("/make-server-98d801c7/health", (c) => {
   return c.json({ status: "ok" });
 });
 
 // Upload music file
-app.post("/music/upload", async (c) => {
+app.post("/make-server-98d801c7/music/upload", async (c) => {
   try {
     const formData = await c.req.formData();
     const file = formData.get("file") as File;
@@ -139,7 +139,7 @@ app.post("/music/upload", async (c) => {
 });
 
 // Get all tracks
-app.get("/music/tracks", async (c) => {
+app.get("/make-server-98d801c7/music/tracks", async (c) => {
   try {
     const tracks = await music.getAllTracks();
     return c.json({ tracks });
@@ -150,7 +150,7 @@ app.get("/music/tracks", async (c) => {
 });
 
 // Delete track
-app.delete("/music/tracks/:trackId", async (c) => {
+app.delete("/make-server-98d801c7/music/tracks/:trackId", async (c) => {
   try {
     const trackId = c.req.param("trackId");
     const fileName = c.req.query("fileName");
@@ -170,7 +170,7 @@ app.delete("/music/tracks/:trackId", async (c) => {
 // ==================== MOVIES ENDPOINTS ====================
 
 // Upload movie file
-app.post("/movies/upload", async (c) => {
+app.post("/make-server-98d801c7/movies/upload", async (c) => {
   try {
     const formData = await c.req.formData();
     const file = formData.get("file") as File;
@@ -237,7 +237,7 @@ app.post("/movies/upload", async (c) => {
 });
 
 // Get all movies
-app.get("/movies/list", async (c) => {
+app.get("/make-server-98d801c7/movies/list", async (c) => {
   try {
     const moviesList = await movies.getAllMovies();
     return c.json({ movies: moviesList });
@@ -248,7 +248,7 @@ app.get("/movies/list", async (c) => {
 });
 
 // Delete movie
-app.delete("/movies/:movieId", async (c) => {
+app.delete("/make-server-98d801c7/movies/:movieId", async (c) => {
   try {
     const movieId = c.req.param("movieId");
     const fileName = c.req.query("fileName");
@@ -268,7 +268,7 @@ app.delete("/movies/:movieId", async (c) => {
 // ==================== SOFTWARE ENDPOINTS ====================
 
 // Upload software file
-app.post("/software/upload", async (c) => {
+app.post("/make-server-98d801c7/software/upload", async (c) => {
   try {
     const formData = await c.req.formData();
     const file = formData.get("file") as File;
@@ -317,7 +317,7 @@ app.post("/software/upload", async (c) => {
 });
 
 // Get all software
-app.get("/software/list", async (c) => {
+app.get("/make-server-98d801c7/software/list", async (c) => {
   try {
     const softwareList = await software.getAllSoftware();
     return c.json({ software: softwareList });
@@ -328,7 +328,7 @@ app.get("/software/list", async (c) => {
 });
 
 // Delete software
-app.delete("/software/:softwareId", async (c) => {
+app.delete("/make-server-98d801c7/software/:softwareId", async (c) => {
   try {
     const softwareId = c.req.param("softwareId");
     const fileName = c.req.query("fileName");
@@ -348,7 +348,7 @@ app.delete("/software/:softwareId", async (c) => {
 // ==================== PAYMENTS ENDPOINTS ====================
 
 // Submit payment for approval
-app.post("/payments/submit", async (c) => {
+app.post("/make-server-98d801c7/payments/submit", async (c) => {
   try {
     const formData = await c.req.formData();
     const userId = formData.get("userId") as string;
@@ -383,7 +383,7 @@ app.post("/payments/submit", async (c) => {
 });
 
 // Get pending payments (admin only)
-app.get("/payments/pending", async (c) => {
+app.get("/make-server-98d801c7/payments/pending", async (c) => {
   try {
     const pendingPayments = await payments.getPendingPayments();
     return c.json({ payments: pendingPayments });
@@ -394,7 +394,7 @@ app.get("/payments/pending", async (c) => {
 });
 
 // Approve payment (admin only)
-app.post("/payments/:paymentId/approve", async (c) => {
+app.post("/make-server-98d801c7/payments/:paymentId/approve", async (c) => {
   try {
     const paymentId = c.req.param("paymentId");
     await payments.approvePayment(paymentId);
@@ -406,7 +406,7 @@ app.post("/payments/:paymentId/approve", async (c) => {
 });
 
 // Reject payment (admin only)
-app.post("/payments/:paymentId/reject", async (c) => {
+app.post("/make-server-98d801c7/payments/:paymentId/reject", async (c) => {
   try {
     const paymentId = c.req.param("paymentId");
     await payments.rejectPayment(paymentId);
@@ -420,7 +420,7 @@ app.post("/payments/:paymentId/reject", async (c) => {
 // ==================== ORDERS ENDPOINTS ====================
 
 // Create new order
-app.post("/orders/create", async (c) => {
+app.post("/make-server-98d801c7/orders/create", async (c) => {
   try {
     const body = await c.req.json();
     const order = await orders.createOrder(body);
@@ -437,7 +437,7 @@ app.post("/orders/create", async (c) => {
 });
 
 // Confirm payment and deliver products
-app.post("/orders/:orderId/confirm", async (c) => {
+app.post("/make-server-98d801c7/orders/:orderId/confirm", async (c) => {
   try {
     const orderId = c.req.param("orderId");
     const order = await orders.getOrder(orderId) as orders.Order;
@@ -465,7 +465,7 @@ app.post("/orders/:orderId/confirm", async (c) => {
 });
 
 // Get order details
-app.get("/orders/:orderId", async (c) => {
+app.get("/make-server-98d801c7/orders/:orderId", async (c) => {
   try {
     const orderId = c.req.param("orderId");
     const order = await orders.getOrder(orderId);

@@ -1,12 +1,11 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { projectId, publicAnonKey } from '@/utils/supabase/info';
+import { projectId, publicAnonKey } from '/utils/supabase/info';
 
 interface User {
   id: string;
   email: string;
   name?: string;
   profilePhoto?: string;
-  isAdmin?: boolean;
   subscription?: {
     plan: string;
     expiresAt: string;
@@ -37,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/server/auth/login`,
+        `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/auth/login`,
         {
           method: 'POST',
           headers: {
@@ -48,19 +47,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       );
 
-      const text = await response.text();
-      console.log('Login response:', response.status, text.slice(0, 200));
-
       if (!response.ok) {
-        try {
-          const error = JSON.parse(text);
-          throw new Error(error.error || 'Login failed');
-        } catch {
-          throw new Error(`Login failed: ${text}`);
-        }
+        const error = await response.json();
+        throw new Error(error.error || 'Login failed');
       }
 
-      const data = JSON.parse(text);
+      const data = await response.json();
       setUser(data.user);
       localStorage.setItem('user', JSON.stringify(data.user));
     } catch (error) {
@@ -72,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signup = async (email: string, password: string, name: string) => {
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/server/auth/signup`,
+        `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/auth/signup`,
         {
           method: 'POST',
           headers: {
@@ -83,19 +75,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       );
 
-      const text = await response.text();
-      console.log('Signup response:', response.status, text.slice(0, 200));
-
       if (!response.ok) {
-        try {
-          const error = JSON.parse(text);
-          throw new Error(error.error || 'Signup failed');
-        } catch {
-          throw new Error(`Signup failed: ${text}`);
-        }
+        const error = await response.json();
+        throw new Error(error.error || 'Signup failed');
       }
 
-      const data = JSON.parse(text);
+      const data = await response.json();
       setUser(data.user);
       localStorage.setItem('user', JSON.stringify(data.user));
     } catch (error) {
@@ -114,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/server/user/update`,
+        `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/user/update`,
         {
           method: 'PUT',
           headers: {
@@ -125,15 +110,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       );
 
-      const text = await response.text();
-      console.log('Update response:', response.status, text.slice(0, 200));
-
       if (!response.ok) {
-        throw new Error(`Update failed: ${text}`);
+        throw new Error('Update failed');
       }
 
-      const data = JSON.parse(text);
-      const updatedUser = { ...user, ...data.user };
+      const updatedUser = { ...user, ...data };
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));
     } catch (error) {
@@ -142,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const isAdmin = !!user?.isAdmin;
+  const isAdmin = user?.email === 'primerceug@gmail.com';
 
   return (
     <AuthContext.Provider value={{ user, isAdmin, login, signup, logout, updateProfile }}>

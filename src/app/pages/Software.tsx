@@ -30,7 +30,7 @@ export default function Software() {
   const fetchSoftware = async () => {
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/server/software/list`,
+        `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/software/list`,
         {
           headers: { Authorization: `Bearer ${publicAnonKey}` },
         }

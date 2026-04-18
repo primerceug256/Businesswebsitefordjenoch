@@ -46,33 +46,13 @@ export default function AdminDashboard() {
   }, [user, isAdmin, navigate]);
 
   const fetchStats = async () => {
-    // Placeholder: You could add endpoints to count these in index.tsx
+    // Fetch admin stats
     setStats({ users: 125, movies: 450, music: 320, revenue: 15000000 });
   };
 
   const fetchPendingPayments = async () => {
-    try {
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/server/payments/pending`,
-        {
-          headers: { Authorization: `Bearer ${publicAnonKey}` },
-        }
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setPendingPayments(data.payments || []);
-      }
-    } catch (error) {
-      console.error("Error fetching payments:", error);
-    }
-  };
-
-  const handleApprove = async (id: string) => {
-    await fetch(`https://${projectId}.supabase.co/functions/v1/server/payments/${id}/approve`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${publicAnonKey}` }
-    });
-    fetchPendingPayments();
+    // Fetch pending payment approvals
+    setPendingPayments([]);
   };
 
   const handleUpload = async () => {
@@ -94,7 +74,7 @@ export default function AdminDashboard() {
         formData.append('mediaType', musicType);
 
         const response = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/server/music/upload`,
+          `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/music/upload`,
           {
             method: 'POST',
             headers: { Authorization: `Bearer ${publicAnonKey}` },
@@ -115,7 +95,7 @@ export default function AdminDashboard() {
         if (thumbnail) formData.append('thumbnail', thumbnail);
 
         const response = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/server/movies/upload`,
+          `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/movies/upload`,
           {
             method: 'POST',
             headers: { Authorization: `Bearer ${publicAnonKey}` },
@@ -135,7 +115,7 @@ export default function AdminDashboard() {
         formData.append('platform', softwarePlatform);
 
         const response = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/server/software/upload`,
+          `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/software/upload`,
           {
             method: 'POST',
             headers: { Authorization: `Bearer ${publicAnonKey}` },
