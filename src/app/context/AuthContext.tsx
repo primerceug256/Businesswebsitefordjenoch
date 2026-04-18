@@ -27,66 +27,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    try {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+      }
+    } catch (e) {
+      console.error("Failed to parse stored user", e);
+      localStorage.removeItem('user');
     }
   }, []);
 
+  const getApiUrl = (path: string) => `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7${path}`;
+
   const login = async (email: string, password: string) => {
-    try {
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/auth/login`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${publicAnonKey}`,
-          },
-          body: JSON.stringify({ email, password }),
-        }
-      );
+    const response = await fetch(getApiUrl('/auth/login'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${publicAnonKey}`,
+      },
+      body: JSON.stringify({ email, password }),
+    });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Login failed');
+    if (!response.ok) {
+      let errorMsg = 'Login failed';
+      try {
+        const data = await response.json();
+        errorMsg = data.error || errorMsg;
+      } catch (e) {
+        errorMsg = `Server error (${response.status})`;
       }
-
-      const data = await response.json();
-      setUser(data.user);
-      localStorage.setItem('user', JSON.stringify(data.user));
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error;
+      throw new Error(errorMsg);
     }
+
+    const data = await response.json();
+    setUser(data.user);
+    localStorage.setItem('user', JSON.stringify(data.user));
   };
 
   const signup = async (email: string, password: string, name: string) => {
-    try {
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/auth/signup`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${publicAnonKey}`,
-          },
-          body: JSON.stringify({ email, password, name }),
-        }
-      );
+    const response = await fetch(getApiUrl('/auth/signup'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${publicAnonKey}`,
+      },
+      body: JSON.stringify({ email, password, name }),
+    });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Signup failed');
+    if (!response.ok) {
+      let errorMsg = 'Signup failed';
+      try {
+        const data = await response.json();
+        errorMsg = data.error || errorMsg;
+      } catch (e) {
+        errorMsg = `Server error (${response.status})`;
       }
-
-      const data = await response.json();
-      setUser(data.user);
-      localStorage.setItem('user', JSON.stringify(data.user));
-    } catch (error) {
-      console.error('Signup error:', error);
-      throw error;
+      throw new Error(errorMsg);
     }
+
+    const data = await response.json();
+    setUser(data.user);
+    localStorage.setItem('user', JSON.stringify(data.user));
   };
 
   const logout = () => {
@@ -97,30 +100,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateProfile = async (data: Partial<User>) => {
     if (!user) return;
 
-    try {
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/user/update`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${publicAnonKey}`,
-          },
-          body: JSON.stringify({ userId: user.id, ...data }),
-        }
-      );
+    const response = await fetch(getApiUrl('/user/update'), {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${publicAnonKey}`,
+      },
+      body: JSON.stringify({ userId: user.id, ...data }),
+    });
 
-      if (!response.ok) {
-        throw new Error('Update failed');
-      }
+    if (!response.ok) throw new Error('Update failed');
 
-      const updatedUser = { ...user, ...data };
-      setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-    } catch (error) {
-      console.error('Update profile error:', error);
-      throw error;
-    }
+    const updatedUser = { ...user, ...data };
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
   const isAdmin = user?.email === 'primerceug@gmail.com';
