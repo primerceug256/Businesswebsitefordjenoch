@@ -7,13 +7,12 @@ import * as software from "./software.tsx";
 import * as auth from "./auth.tsx";
 import * as payments from "./payments.tsx";
 
-// 1. Initialize Hono with the exact base path used by your frontend
-// This ensures that routes like "/auth/login" actually map to 
-// ".../functions/v1/make-server-98d801c7/auth/login"
+// 1. Initialize Hono with the exact function name prefix
 const app = new Hono().basePath("/make-server-98d801c7");
 
 app.use('*', logger());
 
+// 2. Enable CORS
 app.use(
   "*",
   cors({
@@ -24,25 +23,22 @@ app.use(
 );
 
 /**
- * 2. ENSURE VALID JSON FOR 404s
- * If the frontend calls a path that doesn't exist, this returns JSON 
- * instead of the default "Not Found" plain text.
+ * 3. GLOBAL 404 HANDLER (Ensures valid JSON if route is wrong)
+ * Prevents the "Unexpected character" error by returning JSON instead of text
  */
 app.notFound((c) => {
   return c.json({ 
     error: "Route Not Found", 
-    requestedPath: c.req.path,
-    fix: "Ensure your frontend URL includes /make-server-98d801c7"
+    path: c.req.path,
+    suggestion: "Check your frontend URL structure"
   }, 404);
 });
 
 /**
- * 3. ENSURE VALID JSON FOR ERRORS
- * If a code crash happens, this catches the exception and returns a 
- * JSON object instead of a text stack trace.
+ * 4. GLOBAL ERROR HANDLER (Ensures valid JSON if code crashes)
  */
 app.onError((err, c) => {
-  console.error(`Runtime Error: ${err.message}`);
+  console.error(`Backend Error: ${err.message}`);
   return c.json({ 
     error: "Internal Server Error", 
     message: err.message 
@@ -61,6 +57,13 @@ app.post("/auth/signup", async (c) => {
 app.post("/auth/login", async (c) => {
   const body = await c.req.json();
   const user = await auth.login(body.email, body.password);
+  const { passwordHash, ...safeUser } = user;
+  return c.json({ user: safeUser });
+});
+
+app.put("/user/update", async (c) => {
+  const body = await c.req.json();
+  const user = await auth.updateUser(body.userId, body);
   const { passwordHash, ...safeUser } = user;
   return c.json({ user: safeUser });
 });
