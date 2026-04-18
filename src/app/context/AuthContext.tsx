@@ -26,63 +26,81 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
-  // Load user from storage on boot
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
         setUser(JSON.parse(storedUser));
       } catch (e) {
-        console.error("Corrupt user data in storage, clearing...");
         localStorage.removeItem('user');
       }
     }
   }, []);
 
-  /**
-   * Defensive API Request Helper
-   * Checks Content-Type to prevent "Unexpected character" errors
-   */
-  const apiRequest = async (path: string, options: RequestInit) => {
-    const url = `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7${path}`;
+  const login = async (email: string, password: string) => {
+    const url = `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/auth/login`;
 
     const response = await fetch(url, {
-      ...options,
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${publicAnonKey}`,
-        ...options.headers,
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${publicAnonKey}`,
       },
-    });
-
-    const contentType = response.headers.get("content-type");
-
-    if (contentType && contentType.includes("application/json")) {
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Request failed');
-      return data;
-    } else {
-      // Server returned plain text (like a 404 or raw error)
-      const text = await response.text();
-      console.error("Non-JSON Server Response:", text);
-      throw new Error(`Server Error (${response.status}): ${text || 'Check backend console'}`);
-    }
-  };
-
-  const login = async (email: string, password: string) => {
-    const data = await apiRequest('/auth/login', {
-      method: 'POST',
       body: JSON.stringify({ email, password }),
     });
+
+    // Read body once
+    const rawText = await response.text();
+
+    // Debugging info
+    console.log("login status:", response.status);
+    console.log("login content-type:", response.headers.get("content-type"));
+    console.log("login raw body:", rawText);
+
+    // Try parse JSON
+    let data;
+    try {
+      data = rawText ? JSON.parse(rawText) : null;
+    } catch (e) {
+      throw new Error(`Server returned non-JSON (or invalid JSON): ${rawText}`);
+    }
+
+    if (!response.ok) {
+      throw new Error(data?.error || `Login failed (${response.status})`);
+    }
+
     setUser(data.user);
     localStorage.setItem('user', JSON.stringify(data.user));
   };
 
   const signup = async (email: string, password: string, name: string) => {
-    const data = await apiRequest('/auth/signup', {
-      method: 'POST',
+    const url = `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/auth/signup`;
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${publicAnonKey}`,
+      },
       body: JSON.stringify({ email, password, name }),
     });
+
+    const rawText = await response.text();
+    
+    console.log("signup status:", response.status);
+    console.log("signup raw body:", rawText);
+
+    let data;
+    try {
+      data = rawText ? JSON.parse(rawText) : null;
+    } catch (e) {
+      throw new Error(`Server returned non-JSON: ${rawText}`);
+    }
+
+    if (!response.ok) {
+      throw new Error(data?.error || `Signup failed (${response.status})`);
+    }
+
     setUser(data.user);
     localStorage.setItem('user', JSON.stringify(data.user));
   };
@@ -90,14 +108,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('user');
+    window.location.href = '/';
   };
 
   const updateProfile = async (data: Partial<User>) => {
     if (!user) return;
-    const result = await apiRequest('/user/update', {
-      method: 'PUT',
+    const url = `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/user/update`;
+    
+    const response = await fetch(url, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${publicAnonKey}`,
+      },
       body: JSON.stringify({ userId: user.id, ...data }),
     });
+
+    if (!response.ok) throw new Error('Update failed');
+    
+    const result = await response.json();
     setUser(result.user);
     localStorage.setItem('user', JSON.stringify(result.user));
   };
