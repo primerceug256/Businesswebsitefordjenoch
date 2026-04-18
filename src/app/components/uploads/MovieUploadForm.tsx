@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { Upload, Film, Loader } from "lucide-react";
+import { createClient } from "@supabase/supabase-js";
 import { projectId, publicAnonKey } from "/utils/supabase/info";
+
+const supabase = createClient(`https://${projectId}.supabase.co`, publicAnonKey);
 
 export function MovieUploadForm({ onSuccess }: { onSuccess: () => void }) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -12,37 +15,51 @@ export function MovieUploadForm({ onSuccess }: { onSuccess: () => void }) {
     e.preventDefault();
     if (!selectedFile) return;
     setUploading(true);
+    setProgress(10);
 
-    const data = new FormData();
-    data.append("file", selectedFile);
-    data.append("title", title || selectedFile.name);
-    data.append("quality", "1080p");
-    data.append("releaseYear", new Date().getFullYear().toString());
+    try {
+      const fileName = `${Date.now()}-${selectedFile.name.replace(/\s/g, '_')}`;
+      const { error: uploadError } = await supabase.storage
+        .from('make-98d801c7-movies')
+        .upload(fileName, selectedFile);
 
-    const xhr = new XMLHttpRequest();
-    xhr.upload.onprogress = (e) => setProgress(Math.round((e.loaded / e.total) * 100));
-    xhr.onload = () => {
-      if (xhr.status === 200) { alert("Movie Uploaded!"); onSuccess(); window.location.reload(); }
-      else alert("Upload failed.");
-      setUploading(false);
-    };
-    xhr.open("POST", `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/movies/upload`);
-    xhr.setRequestHeader("Authorization", `Bearer ${publicAnonKey}`);
-    xhr.send(data);
+      if (uploadError) throw uploadError;
+      setProgress(60);
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('make-98d801c7-movies')
+        .getPublicUrl(fileName);
+
+      const { error: dbError } = await supabase
+        .from('movies')
+        .insert([{
+          title: title || selectedFile.name,
+          video_url: publicUrl,
+          quality: "HD 1080p",
+          release_year: new Date().getFullYear().toString()
+        }]);
+
+      if (dbError) throw dbError;
+      alert("Movie Published Successfully!");
+      onSuccess();
+      window.location.reload();
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally { setUploading(false); }
   };
 
   return (
     <form onSubmit={handleUpload} className="space-y-4">
-      <div className="p-4 border-2 border-dashed rounded-lg text-center bg-gray-50">
-        <input type="file" accept="video/*" onChange={e => setSelectedFile(e.target.files?.[0] || null)} className="hidden" id="movie-upload-input" />
-        <label htmlFor="movie-upload-input" className="cursor-pointer">
-          <Film className="mx-auto mb-2 text-gray-400" />
-          <p className="text-sm text-gray-600">{selectedFile ? selectedFile.name : "Select Video File (Max 5GB)"}</p>
+      <div className="p-6 border-2 border-dashed rounded-2xl text-center bg-gray-50">
+        <input type="file" accept="video/*" onChange={e => setSelectedFile(e.target.files?.[0] || null)} className="hidden" id="mov-file" />
+        <label htmlFor="mov-file" className="cursor-pointer block">
+          <Film className="mx-auto mb-2 text-red-600" />
+          <p className="text-xs font-bold text-gray-500">{selectedFile ? selectedFile.name : "Select Movie File"}</p>
         </label>
       </div>
-      <input required placeholder="Movie Title" className="w-full p-3 border rounded" value={title} onChange={e => setTitle(e.target.value)} />
-      <button disabled={uploading || !selectedFile} className="w-full bg-red-600 py-3 text-white rounded font-bold disabled:opacity-50">
-        {uploading ? `Uploading ${progress}%` : "Start Movie Upload"}
+      <input placeholder="Movie Title" className="w-full p-4 bg-gray-100 rounded-xl font-bold" value={title} onChange={e => setTitle(e.target.value)} required />
+      <button disabled={uploading || !selectedFile} className="w-full bg-red-600 text-white py-4 rounded-xl font-black uppercase">
+        {uploading ? `Uploading... ${progress}%` : "Publish Movie"}
       </button>
     </form>
   );
