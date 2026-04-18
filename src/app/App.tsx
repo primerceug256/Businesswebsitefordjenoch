@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Header } from "@/app/components/Header";
 import { Hero } from "@/app/components/Hero";
 import { FeaturedPlayer } from "@/app/components/FeaturedPlayer";
@@ -30,6 +30,7 @@ export default function App() {
   const handleAddToCart = (product: Product) => {
     setCartItems(prevCart => {
       const existingItem = prevCart.find(item => item.product.id === product.id);
+      
       if (existingItem) {
         return prevCart.map(item =>
           item.product.id === product.id
@@ -67,7 +68,7 @@ export default function App() {
       <Header 
         cartCount={cartCount} 
         onCartClick={() => setIsCartOpen(true)} 
-        onSearch={setSearchQuery}
+        onSearch={setSearchQuery} 
       />
       <Hero />
       <FeaturedPlayer />
