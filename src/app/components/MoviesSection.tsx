@@ -1,59 +1,56 @@
 import { useState, useEffect } from "react";
-import { Play, X, Star, Lock, ChevronRight, Ticket } from "lucide-react";
+import { Play, Ticket, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { projectId, publicAnonKey } from "../../../utils/supabase/info";
+import { projectId, publicAnonKey } from "/utils/supabase/info";
 
 const plans = [
-  { time: "2 Hours", price: "500" }, { time: "6 Hours", price: "800" },
-  { time: "24 Hours", price: "1100" }, { time: "3 Days", price: "3500" },
-  { time: "Weekly", price: "6000" }, { time: "1 Month", price: "19000" }
+  { t: "2Hrs", p: "500" }, { t: "6Hrs", p: "800" }, { t: "24Hrs", p: "1100" },
+  { t: "3Days", p: "3500" }, { t: "Weekly", p: "6000" }, { t: "2Weeks", p: "11000" },
+  { t: "1Month", p: "19000" }, { t: "3Months", p: "39500" }, { t: "6Months", p: "65000" },
+  { t: "1Year", p: "110000" }, { t: "Unlimited", p: "350000" }
 ];
 
-export function MoviesSection({ searchQuery = "" }: { searchQuery?: string }) {
+export function MoviesSection({ searchQuery = "" }: any) {
   const [movies, setMovies] = useState<any[]>([]);
-  const [selectedMovie, setSelectedMovie] = useState<any>(null);
+  const [selected, setSelected] = useState<any>(null);
 
   useEffect(() => {
     fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/movies/list`, {
       headers: { Authorization: `Bearer ${publicAnonKey}` }
-    }).then(r => r.json()).then(data => setMovies(data.movies || []));
+    }).then(r => r.json()).then(d => setMovies(d.movies || []));
   }, []);
 
-  const filteredMovies = movies.filter(m => m.title.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filtered = movies.filter(m => m.title.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
-    <section id="movies" className="bg-[#0a0a0a] py-20 text-white">
+    <section id="movies" className="bg-[#050505] py-20 text-white">
       <div className="max-w-7xl mx-auto px-4">
-        <h2 className="text-3xl font-black italic mb-8 border-l-4 border-orange-600 pl-4 uppercase tracking-tighter">
-          Primerce <span className="text-orange-600">Cinema Zone</span>
-        </h2>
+        <div className="mb-12 border-l-4 border-orange-600 pl-4">
+          <h2 className="text-3xl font-black uppercase italic tracking-tighter">Primerce <span className="text-orange-600">Cinema Zone</span></h2>
+          <p className="text-gray-500 text-xs font-bold">Watch and Download the Latest Movies</p>
+        </div>
 
-        {/* Subscription Table */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-16">
+        {/* Subscription Grid */}
+        <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-16">
           {plans.map(p => (
-            <div key={p.time} className="bg-white/5 border border-white/10 p-4 rounded-2xl text-center hover:border-orange-500 transition-all">
-              <Ticket className="mx-auto mb-2 text-orange-500" size={18}/>
-              <p className="text-[10px] font-bold uppercase text-gray-400">{p.time}</p>
-              <p className="text-sm font-black text-white">{p.price} UGX</p>
+            <div key={p.t} className="bg-white/5 border border-white/10 p-3 rounded-xl text-center hover:bg-orange-600/20 transition-all">
+              <p className="text-[9px] font-black text-gray-400 uppercase">{p.t}</p>
+              <p className="text-xs font-black text-orange-500">{p.p} UGX</p>
             </div>
           ))}
         </div>
 
-        {/* Movie Grid */}
+        {/* Movies Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
-          {filteredMovies.map((movie) => (
-            <div 
-              key={movie.id} 
-              className="relative aspect-[2/3] bg-gray-900 rounded-2xl overflow-hidden cursor-pointer group border border-white/5"
-              onClick={() => setSelectedMovie(movie)}
-            >
-              <img src="https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1000" className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-all duration-500" />
+          {filtered.map(m => (
+            <div key={m.id} onClick={() => setSelected(m)} className="relative aspect-[2/3] rounded-2xl overflow-hidden cursor-pointer group">
+              <img src="https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=1000" className="w-full h-full object-cover opacity-50 group-hover:scale-110 transition-all" />
               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
-                <div className="bg-orange-600 p-3 rounded-full"><Play fill="white"/></div>
+                <div className="bg-orange-600 p-3 rounded-full shadow-xl"><Play fill="white" size={20}/></div>
               </div>
-              <div className="absolute bottom-0 p-4 w-full bg-gradient-to-t from-black to-transparent">
-                <p className="text-[10px] font-bold text-orange-500">{movie.quality}</p>
-                <h4 className="font-bold text-sm truncate">{movie.title}</h4>
+              <div className="absolute bottom-0 p-4 bg-gradient-to-t from-black to-transparent w-full">
+                <p className="text-[10px] font-bold text-orange-500 uppercase">{m.quality || 'HD'}</p>
+                <h4 className="text-sm font-black uppercase truncate">{m.title}</h4>
               </div>
             </div>
           ))}
@@ -61,14 +58,13 @@ export function MoviesSection({ searchQuery = "" }: { searchQuery?: string }) {
       </div>
 
       <AnimatePresence>
-        {selectedMovie && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
-            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="relative w-full max-w-4xl bg-[#111] rounded-3xl overflow-hidden shadow-2xl border border-white/10">
-              <video controls autoPlay className="w-full aspect-video bg-black" src={selectedMovie.videoUrl} />
-              <div className="p-6">
-                <h2 className="text-2xl font-black italic uppercase text-orange-500">{selectedMovie.title}</h2>
-                <p className="text-gray-400 text-sm mt-2 mb-6">Enjoy high-quality streaming on DJ Enoch Pro Website.</p>
-                <button onClick={() => setSelectedMovie(null)} className="bg-white text-black px-6 py-2 rounded-full font-bold text-xs">CLOSE PLAYER</button>
+        {selected && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/95">
+            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="relative w-full max-w-4xl bg-[#111] rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
+              <video src={selected.videoUrl} controls autoPlay className="w-full aspect-video bg-black" />
+              <div className="p-6 flex justify-between items-center">
+                <h3 className="text-xl font-black uppercase italic text-orange-500">{selected.title}</h3>
+                <button onClick={() => setSelected(null)} className="bg-white text-black px-6 py-2 rounded-full font-black text-[10px]">CLOSE</button>
               </div>
             </motion.div>
           </div>
