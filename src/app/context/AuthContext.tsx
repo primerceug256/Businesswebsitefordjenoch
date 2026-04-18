@@ -49,15 +49,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify({ email, password }),
     });
 
-    // Read body once
     const rawText = await response.text();
 
-    // Debugging info
     console.log("login status:", response.status);
     console.log("login content-type:", response.headers.get("content-type"));
     console.log("login raw body:", rawText);
 
-    // Try parse JSON
     let data;
     try {
       data = rawText ? JSON.parse(rawText) : null;
@@ -86,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const rawText = await response.text();
-    
+
     console.log("signup status:", response.status);
     console.log("signup raw body:", rawText);
 
@@ -94,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       data = rawText ? JSON.parse(rawText) : null;
     } catch (e) {
-      throw new Error(`Server returned non-JSON: ${rawText}`);
+      throw new Error(`Server returned non-JSON (or invalid JSON): ${rawText}`);
     }
 
     if (!response.ok) {
@@ -108,24 +105,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('user');
-    window.location.href = '/';
+    window.location.href = '/login';
   };
 
   const updateProfile = async (data: Partial<User>) => {
     if (!user) return;
     const url = `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/user/update`;
-    
     const response = await fetch(url, {
-      method: "PUT",
+      method: 'PUT',
       headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${publicAnonKey}`,
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${publicAnonKey}`,
       },
       body: JSON.stringify({ userId: user.id, ...data }),
     });
 
     if (!response.ok) throw new Error('Update failed');
-    
     const result = await response.json();
     setUser(result.user);
     localStorage.setItem('user', JSON.stringify(result.user));
