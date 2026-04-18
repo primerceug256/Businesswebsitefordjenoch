@@ -1,19 +1,19 @@
 import { Hono } from "npm:hono";
 import { cors } from "npm:hono/cors";
 import { logger } from "npm:hono/logger";
-import * as kv from "./kv_store.tsx";
 import * as music from "./music.tsx";
 import * as movies from "./movies.tsx";
 import * as software from "./software.tsx";
 import * as auth from "./auth.tsx";
 import * as payments from "./payments.tsx";
 
-const app = new Hono();
+// 1. Initialize Hono with the exact base path used by your frontend
+// This ensures that routes like "/auth/login" actually map to 
+// ".../functions/v1/make-server-98d801c7/auth/login"
+const app = new Hono().basePath("/make-server-98d801c7");
 
-// Enable Logger
 app.use('*', logger());
 
-// Enable CORS
 app.use(
   "*",
   cors({
@@ -23,60 +23,68 @@ app.use(
   }),
 );
 
-// ERROR HANDLER: Ensure all errors return JSON
-app.onError((err, c) => {
-  console.error(`App Error: ${err.message}`);
-  return c.json({ error: err.message || "Internal Server Error" }, 500);
-});
-
-// 404 HANDLER: Ensure 404s return JSON
+/**
+ * 2. ENSURE VALID JSON FOR 404s
+ * If the frontend calls a path that doesn't exist, this returns JSON 
+ * instead of the default "Not Found" plain text.
+ */
 app.notFound((c) => {
-  return c.json({ error: `Route not found: ${c.req.path}` }, 404);
+  return c.json({ 
+    error: "Route Not Found", 
+    requestedPath: c.req.path,
+    fix: "Ensure your frontend URL includes /make-server-98d801c7"
+  }, 404);
 });
 
-// ROUTING: Explicitly include the function name prefix so paths match exactly
-const prefix = "/make-server-98d801c7";
+/**
+ * 3. ENSURE VALID JSON FOR ERRORS
+ * If a code crash happens, this catches the exception and returns a 
+ * JSON object instead of a text stack trace.
+ */
+app.onError((err, c) => {
+  console.error(`Runtime Error: ${err.message}`);
+  return c.json({ 
+    error: "Internal Server Error", 
+    message: err.message 
+  }, 500);
+});
 
-// Auth
-app.post(`${prefix}/auth/signup`, async (c) => {
-  const { email, password, name } = await c.req.json();
-  const user = await auth.signup(email, password, name);
+// ==================== AUTH ROUTES ====================
+
+app.post("/auth/signup", async (c) => {
+  const body = await c.req.json();
+  const user = await auth.signup(body.email, body.password, body.name);
   const { passwordHash, ...safeUser } = user;
   return c.json({ user: safeUser });
 });
 
-app.post(`${prefix}/auth/login`, async (c) => {
-  const { email, password } = await c.req.json();
-  const user = await auth.login(email, password);
+app.post("/auth/login", async (c) => {
+  const body = await c.req.json();
+  const user = await auth.login(body.email, body.password);
   const { passwordHash, ...safeUser } = user;
   return c.json({ user: safeUser });
 });
 
-app.put(`${prefix}/user/update`, async (c) => {
-  const { userId, ...updates } = await c.req.json();
-  const user = await auth.updateUser(userId, updates);
-  const { passwordHash, ...safeUser } = user;
-  return c.json({ user: safeUser });
-});
+// ==================== CONTENT ROUTES ====================
 
-// Content List Endpoints
-app.get(`${prefix}/music/tracks`, async (c) => {
+app.get("/music/tracks", async (c) => {
   const tracks = await music.getAllTracks();
   return c.json({ tracks });
 });
 
-app.get(`${prefix}/movies/list`, async (c) => {
+app.get("/movies/list", async (c) => {
   const moviesList = await movies.getAllMovies();
   return c.json({ movies: moviesList });
 });
 
-app.get(`${prefix}/software/list`, async (c) => {
+app.get("/software/list", async (c) => {
   const softwareList = await software.getAllSoftware();
   return c.json({ software: softwareList });
 });
 
-// Payment Submission
-app.post(`${prefix}/payments/submit`, async (c) => {
+// ==================== PAYMENT ROUTES ====================
+
+app.post("/payments/submit", async (c) => {
   const formData = await c.req.formData();
   const payment = await payments.submitPayment(
     formData.get("userId") as string,
