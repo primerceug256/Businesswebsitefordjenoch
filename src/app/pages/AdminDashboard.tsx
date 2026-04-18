@@ -74,7 +74,7 @@ export default function AdminDashboard() {
         formData.append('mediaType', musicType);
 
         const response = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/music/upload`,
+          `https://${projectId}.supabase.co/functions/v1/server/music/upload`,
           {
             method: 'POST',
             headers: { Authorization: `Bearer ${publicAnonKey}` },
@@ -95,7 +95,7 @@ export default function AdminDashboard() {
         if (thumbnail) formData.append('thumbnail', thumbnail);
 
         const response = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/movies/upload`,
+          `https://${projectId}.supabase.co/functions/v1/server/movies/upload`,
           {
             method: 'POST',
             headers: { Authorization: `Bearer ${publicAnonKey}` },
@@ -115,7 +115,7 @@ export default function AdminDashboard() {
         formData.append('platform', softwarePlatform);
 
         const response = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/software/upload`,
+          `https://${projectId}.supabase.co/functions/v1/server/software/upload`,
           {
             method: 'POST',
             headers: { Authorization: `Bearer ${publicAnonKey}` },

@@ -100,7 +100,7 @@ export function MovieUploadForm({ onSuccess }: { onSuccess: () => void }) {
         throw new Error("Network error during upload");
       });
 
-      xhr.open("POST", `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/movies/upload`);
+      xhr.open("POST", `https://${projectId}.supabase.co/functions/v1/server/movies/upload`);
       xhr.setRequestHeader("Authorization", `Bearer ${publicAnonKey}`);
       xhr.send(formDataToSend);
     } catch (err) {

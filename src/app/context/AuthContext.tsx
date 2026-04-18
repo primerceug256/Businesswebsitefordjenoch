@@ -36,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/auth/login`,
+        `https://${projectId}.supabase.co/functions/v1/server/auth/login`,
         {
           method: 'POST',
           headers: {
@@ -47,12 +47,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       );
 
+      const text = await response.text();
+      console.log('Login response:', response.status, text.slice(0, 200));
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Login failed');
+        try {
+          const error = JSON.parse(text);
+          throw new Error(error.error || 'Login failed');
+        } catch {
+          throw new Error(`Login failed: ${text}`);
+        }
       }
 
-      const data = await response.json();
+      const data = JSON.parse(text);
       setUser(data.user);
       localStorage.setItem('user', JSON.stringify(data.user));
     } catch (error) {
@@ -64,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signup = async (email: string, password: string, name: string) => {
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/auth/signup`,
+        `https://${projectId}.supabase.co/functions/v1/server/auth/signup`,
         {
           method: 'POST',
           headers: {
@@ -75,12 +82,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       );
 
+      const text = await response.text();
+      console.log('Signup response:', response.status, text.slice(0, 200));
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Signup failed');
+        try {
+          const error = JSON.parse(text);
+          throw new Error(error.error || 'Signup failed');
+        } catch {
+          throw new Error(`Signup failed: ${text}`);
+        }
       }
 
-      const data = await response.json();
+      const data = JSON.parse(text);
       setUser(data.user);
       localStorage.setItem('user', JSON.stringify(data.user));
     } catch (error) {
@@ -99,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/user/update`,
+        `https://${projectId}.supabase.co/functions/v1/server/user/update`,
         {
           method: 'PUT',
           headers: {
@@ -110,11 +124,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       );
 
+      const text = await response.text();
+      console.log('Update response:', response.status, text.slice(0, 200));
+
       if (!response.ok) {
-        throw new Error('Update failed');
+        throw new Error(`Update failed: ${text}`);
       }
 
-      const updatedUser = { ...user, ...data };
+      const data = JSON.parse(text);
+      const updatedUser = { ...user, ...data.user };
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));
     } catch (error) {

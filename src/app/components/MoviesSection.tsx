@@ -85,7 +85,7 @@ export function MoviesSection() {
   const fetchMovies = async () => {
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/movies/list`,
+        `https://${projectId}.supabase.co/functions/v1/server/movies/list`,
         {
           headers: {
             Authorization: `Bearer ${publicAnonKey}`,

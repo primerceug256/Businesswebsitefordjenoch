@@ -38,7 +38,7 @@ export default function Cart() {
       }
 
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/payments/submit`,
+        `https://${projectId}.supabase.co/functions/v1/server/payments/submit`,
         {
           method: 'POST',
           headers: { Authorization: `Bearer ${publicAnonKey}` },
