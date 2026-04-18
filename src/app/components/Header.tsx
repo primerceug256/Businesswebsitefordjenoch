@@ -1,5 +1,6 @@
+// src/app/components/Header.tsx
 import { useState } from "react";
-import { Menu, X, ShoppingCart, Search, Phone, User } from "lucide-react";
+import { Menu, X, ShoppingCart, Search, Phone, Youtube, Facebook, Instagram } from "lucide-react";
 
 interface HeaderProps {
   cartCount: number;
@@ -20,85 +21,61 @@ export function Header({ cartCount, onCartClick, onSearch }: HeaderProps) {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md">
-      <div className="bg-gradient-to-r from-orange-500 to-orange-600">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between py-2 text-sm">
-            <div className="flex items-center gap-4 text-white">
-              <div className="flex items-center gap-2">
-                <Phone className="w-4 h-4" />
-                <span className="hidden sm:inline">+256 747 816 444</span>
-              </div>
-              <span className="hidden md:inline">|</span>
-              <span className="hidden md:inline">📍 Nyenje, Mukono</span>
-            </div>
-            <div className="flex items-center gap-4 text-white">
-              <button className="flex items-center gap-1 hover:opacity-80 transition-opacity">
-                <User className="w-4 h-4" />
-                <span className="hidden sm:inline">Account</span>
-              </button>
-            </div>
+      {/* Top Bar with Socials */}
+      <div className="bg-black text-white py-2">
+        <div className="max-w-7xl mx-auto px-4 flex justify-between items-center text-xs">
+          <div className="flex gap-4">
+            <a href="https://youtube.com/@primercemovies" target="_blank" className="hover:text-red-500 flex items-center gap-1"><Youtube size={14}/> YouTube</a>
+            <a href="https://facebook.com/primercemovies" target="_blank" className="hover:text-blue-500 flex items-center gap-1"><Facebook size={14}/> Facebook</a>
+            <a href="https://instagram.com/primercemovies" target="_blank" className="hover:text-pink-500 flex items-center gap-1"><Instagram size={14}/> Instagram</a>
+          </div>
+          <div className="flex items-center gap-2">
+            <Phone size={12} /> <span>+256 747 816 444</span>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between py-4">
-          <button onClick={() => scrollToSection("home")} className="flex items-center gap-2 group">
-            <div className="text-2xl font-black text-gray-900">
-              DJ ENOCH <span className="text-orange-600">PRO</span>
-            </div>
+      <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+        <button onClick={() => scrollToSection("home")} className="text-xl font-black italic">
+          DJ ENOCH <span className="text-orange-600">PRO</span>
+        </button>
+
+        {/* Desktop Menu */}
+        <nav className="hidden lg:flex gap-6 font-bold text-sm uppercase">
+          <button onClick={() => scrollToSection("about")} className="hover:text-orange-600">About</button>
+          <button onClick={() => scrollToSection("gallery")} className="hover:text-orange-600">Gallery</button>
+          <button onClick={() => scrollToSection("downloads")} className="hover:text-orange-600">Music</button>
+          <button onClick={() => scrollToSection("software")} className="hover:text-orange-600">Software</button>
+          <button onClick={() => scrollToSection("shop")} className="hover:text-orange-600">DJ Drops</button>
+          <button onClick={() => scrollToSection("movies")} className="hover:text-orange-600">Movies</button>
+          <button onClick={() => scrollToSection("services")} className="hover:text-orange-600">Services</button>
+          <button onClick={() => scrollToSection("contact")} className="hover:text-orange-600">Contact</button>
+        </nav>
+
+        <div className="flex gap-4 items-center">
+          <button onClick={onCartClick} className="relative">
+            <ShoppingCart size={24} />
+            {cartCount > 0 && <span className="absolute -top-2 -right-2 bg-orange-600 text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center">{cartCount}</span>}
           </button>
-
-          <div className="hidden lg:flex flex-1 max-w-2xl mx-8">
-            <div className="relative w-full">
-              <input
-                type="text"
-                onChange={(e) => onSearch(e.target.value)}
-                placeholder="Search for DJ drops, software, and more..."
-                className="w-full px-4 py-3 pr-12 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-              />
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
-                <Search className="w-5 h-5" />
-              </div>
-            </div>
-          </div>
-
-          <nav className="hidden md:flex items-center gap-6">
-            <button onClick={() => scrollToSection("shop")} className="text-gray-700 hover:text-orange-600 font-semibold transition-colors">Shop</button>
-            <button onClick={() => scrollToSection("about")} className="text-gray-700 hover:text-orange-600 font-semibold transition-colors">About</button>
-            <button onClick={() => scrollToSection("services")} className="text-gray-700 hover:text-orange-600 font-semibold transition-colors">Services</button>
-            <button onClick={() => scrollToSection("contact")} className="text-gray-700 hover:text-orange-600 font-semibold transition-colors">Contact</button>
-
-            <button onClick={onCartClick} className="relative p-2 text-gray-700 hover:text-orange-600 transition-colors">
-              <ShoppingCart className="w-6 h-6" />
-              {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-orange-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                  {cartCount}
-                </span>
-              )}
-            </button>
-          </nav>
-
-          <button className="md:hidden p-2 text-gray-700" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          <button className="lg:hidden" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+            {isMenuOpen ? <X /> : <Menu />}
           </button>
-        </div>
-
-        <div className="lg:hidden pb-4">
-          <div className="relative w-full">
-            <input
-              type="text"
-              onChange={(e) => onSearch(e.target.value)}
-              placeholder="Search products..."
-              className="w-full px-4 py-2 pr-12 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-            />
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
-              <Search className="w-5 h-5" />
-            </div>
-          </div>
         </div>
       </div>
-      {/* Mobile Menu ... */}
+
+      {/* Mobile Menu Content */}
+      {isMenuOpen && (
+        <div className="lg:hidden bg-white border-t p-4 flex flex-col gap-4 font-bold text-center">
+          <button onClick={() => scrollToSection("about")}>About Us</button>
+          <button onClick={() => scrollToSection("gallery")}>Gallery</button>
+          <button onClick={() => scrollToSection("downloads")}>Download Music</button>
+          <button onClick={() => scrollToSection("software")}>Software</button>
+          <button onClick={() => scrollToSection("shop")}>DJ Drops</button>
+          <button onClick={() => scrollToSection("movies")}>Movies (Subscription)</button>
+          <button onClick={() => scrollToSection("services")}>Services</button>
+          <button onClick={() => scrollToSection("contact")}>Contact</button>
+        </div>
+      )}
     </header>
   );
 }
