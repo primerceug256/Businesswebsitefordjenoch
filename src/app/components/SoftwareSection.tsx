@@ -1,27 +1,30 @@
-// src/app/components/SoftwareSection.tsx
-import { Download, Laptop } from "lucide-react";
+import { Laptop, ShoppingCart } from "lucide-react";
 
-const softs = [
-  { id: 's1', name: "Sony Acid Pro", price: 5500 },
-  { id: 's2', name: "Sony Vegas Pro", price: 5500 },
-  { id: 's3', name: "Virtual DJ Pro", price: 5500 },
-  { id: 's4', name: "FL Studio 21", price: 5500 },
+const apps = [
+  { id: 'sw1', name: 'Sony Acid Pro', price: 5500 },
+  { id: 'sw2', name: 'Sony Vegas Pro', price: 5500 },
+  { id: 'sw3', name: 'Virtual DJ Pro', price: 5500 },
+  { id: 'sw4', name: 'FL Studio 21', price: 5500 }
 ];
 
-export function SoftwareSection({ onAddToCart }: any) {
+export function SoftwareSection({ onAddToCart, searchQuery = "" }: any) {
+  const filtered = apps.filter(a => a.name.toLowerCase().includes(searchQuery.toLowerCase()));
+
   return (
-    <section id="software" className="py-20 bg-white">
-      <div className="max-w-7xl mx-auto px-4 text-center">
-        <h2 className="text-3xl font-black uppercase mb-10">Software Store</h2>
+    <section id="software" className="py-20 bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4">
+        <h2 className="text-3xl font-black italic mb-10 text-center uppercase tracking-tighter">Pro <span className="text-orange-600">DJ Software</span></h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {softs.map((s) => (
-            <div key={s.id} className="border p-6 rounded-2xl hover:border-orange-500 transition-all">
-              <Laptop className="mx-auto mb-4 text-orange-600" size={40} />
-              <h3 className="font-bold mb-2">{s.name}</h3>
-              <p className="text-orange-600 font-black mb-4">{s.price} UGX</p>
+          {filtered.map(app => (
+            <div key={app.id} className="bg-white p-6 rounded-3xl border border-gray-100 text-center hover:shadow-xl transition-all group">
+              <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-orange-100">
+                <Laptop className="text-gray-400 group-hover:text-orange-600"/>
+              </div>
+              <h3 className="font-bold text-sm mb-2">{app.name}</h3>
+              <p className="text-orange-600 font-black mb-4 text-sm">{app.price.toLocaleString()} UGX</p>
               <button 
-                onClick={() => onAddToCart({ ...s, category: 'software' })}
-                className="w-full bg-black text-white py-2 rounded-lg font-bold text-sm"
+                onClick={() => onAddToCart({...app, category: 'software'})}
+                className="w-full bg-black text-white py-3 rounded-xl font-black text-[10px] uppercase hover:bg-orange-600"
               >
                 Add to Cart
               </button>
