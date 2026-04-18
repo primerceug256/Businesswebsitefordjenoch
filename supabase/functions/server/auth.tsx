@@ -6,6 +6,7 @@ export interface User {
   email: string;
   passwordHash: string;
   name: string;
+  isAdmin?: boolean;
   profilePhoto?: string;
   subscription?: {
     plan: string;
@@ -28,12 +29,14 @@ export async function signup(email: string, password: string, name: string): Pro
   const userId = `user-${Date.now()}`;
   const now = new Date();
   const expires = new Date(now.getTime() + 6 * 60 * 60 * 1000); // 6 hours free for new users
+  const isAdmin = email === 'primerceug@gmail.com';
 
   const user: User = {
     id: userId,
     email,
     passwordHash: hashPassword(password),
     name,
+    isAdmin,
     subscription: {
       plan: 'free',
       expiresAt: expires.toISOString(),
