@@ -6,6 +6,8 @@ import * as music from "./music.tsx";
 import * as movies from "./movies.tsx";
 import * as software from "./software.tsx";
 import * as orders from "./orders.tsx";
+import * as auth from "./auth.tsx";
+import * as payments from "./payments.tsx";
 import { initializeUnifiedStorage } from "./unified-storage.tsx";
 import { cleanupOldBuckets } from "./cleanup-buckets.tsx";
 
@@ -32,6 +34,55 @@ app.use(
   await initializeUnifiedStorage();
 })();
 
+// ==================== AUTH ENDPOINTS ====================
+
+// Signup
+app.post("/make-server-98d801c7/auth/signup", async (c) => {
+  try {
+    const { email, password, name } = await c.req.json();
+    const user = await auth.signup(email, password, name);
+
+    // Remove password hash from response
+    const { passwordHash, ...userWithoutPassword } = user;
+
+    return c.json({ user: userWithoutPassword });
+  } catch (error) {
+    console.error("Signup error:", error);
+    return c.json({ error: String(error) }, 400);
+  }
+});
+
+// Login
+app.post("/make-server-98d801c7/auth/login", async (c) => {
+  try {
+    const { email, password } = await c.req.json();
+    const user = await auth.login(email, password);
+
+    // Remove password hash from response
+    const { passwordHash, ...userWithoutPassword } = user;
+
+    return c.json({ user: userWithoutPassword });
+  } catch (error) {
+    console.error("Login error:", error);
+    return c.json({ error: String(error) }, 401);
+  }
+});
+
+// Update user profile
+app.put("/make-server-98d801c7/user/update", async (c) => {
+  try {
+    const { userId, ...updates } = await c.req.json();
+    const user = await auth.updateUser(userId, updates);
+
+    const { passwordHash, ...userWithoutPassword } = user;
+
+    return c.json({ user: userWithoutPassword });
+  } catch (error) {
+    console.error("Update user error:", error);
+    return c.json({ error: String(error) }, 400);
+  }
+});
+
 // Health check endpoint
 app.get("/make-server-98d801c7/health", (c) => {
   return c.json({ status: "ok" });
@@ -44,6 +95,7 @@ app.post("/make-server-98d801c7/music/upload", async (c) => {
     const file = formData.get("file") as File;
     const title = formData.get("title") as string;
     const type = formData.get("type") as string;
+    const mediaType = formData.get("mediaType") as string; // 'audio' or 'video'
     const duration = formData.get("duration") as string;
     const releaseDate = formData.get("releaseDate") as string;
 
@@ -53,7 +105,7 @@ app.post("/make-server-98d801c7/music/upload", async (c) => {
 
     // Get file data
     const arrayBuffer = await file.arrayBuffer();
-    
+
     // Upload file
     const { fileName, publicUrl } = await music.uploadMusicFile(
       file.name,
@@ -67,6 +119,7 @@ app.post("/make-server-98d801c7/music/upload", async (c) => {
       id: trackId,
       title: title || file.name,
       type: type || "Latest Mix",
+      mediaType: mediaType || "audio",
       duration: duration || "00:00",
       releaseDate: releaseDate || new Date().toLocaleDateString(),
       audioUrl: publicUrl,
@@ -124,21 +177,36 @@ app.post("/make-server-98d801c7/movies/upload", async (c) => {
     const title = formData.get("title") as string;
     const description = formData.get("description") as string;
     const genre = formData.get("genre") as string;
+    const vj = formData.get("vj") as string;
+    const type = formData.get("type") as string; // 'movie' or 'series'
     const duration = formData.get("duration") as string;
     const releaseYear = formData.get("releaseYear") as string;
     const quality = formData.get("quality") as string;
+    const thumbnail = formData.get("thumbnail") as File | null;
 
     if (!file) {
       return c.json({ error: "No file provided" }, 400);
     }
 
     const arrayBuffer = await file.arrayBuffer();
-    
+
     const { fileName, publicUrl } = await movies.uploadMovieFile(
       file.name,
       arrayBuffer,
       file.type
     );
+
+    // Handle thumbnail upload if provided
+    let thumbnailUrl = "";
+    if (thumbnail) {
+      const thumbBuffer = await thumbnail.arrayBuffer();
+      const thumbResult = await movies.uploadMovieFile(
+        `thumb_${thumbnail.name}`,
+        thumbBuffer,
+        thumbnail.type
+      );
+      thumbnailUrl = thumbResult.publicUrl;
+    }
 
     const movieId = `movie-${Date.now()}`;
     await movies.saveMovieMetadata({
@@ -146,10 +214,13 @@ app.post("/make-server-98d801c7/movies/upload", async (c) => {
       title: title || file.name,
       description: description || "",
       genre: genre || "General",
+      vj: vj || "",
+      type: type || "movie",
       duration: duration || "00:00",
       releaseYear: releaseYear || new Date().getFullYear().toString(),
       quality: quality || "1080p",
       videoUrl: publicUrl,
+      thumbnail: thumbnailUrl,
       fileName,
     });
 
@@ -157,7 +228,7 @@ app.post("/make-server-98d801c7/movies/upload", async (c) => {
       success: true,
       movieId,
       videoUrl: publicUrl,
-      message: "Movie uploaded successfully",
+      message: `${type === 'series' ? 'Series' : 'Movie'} uploaded successfully`,
     });
   } catch (error) {
     console.error("Error uploading movie:", error);
@@ -271,6 +342,78 @@ app.delete("/make-server-98d801c7/software/:softwareId", async (c) => {
   } catch (error) {
     console.error("Error deleting software:", error);
     return c.json({ error: "Failed to delete software", details: String(error) }, 500);
+  }
+});
+
+// ==================== PAYMENTS ENDPOINTS ====================
+
+// Submit payment for approval
+app.post("/make-server-98d801c7/payments/submit", async (c) => {
+  try {
+    const formData = await c.req.formData();
+    const userId = formData.get("userId") as string;
+    const items = formData.get("items") as string;
+    const total = parseFloat(formData.get("total") as string);
+    const transactionId = formData.get("transactionId") as string;
+
+    // Get user name
+    let userName = "Guest";
+    if (userId !== "guest") {
+      const user = await kv.get(`user:${userId}`) as any;
+      userName = user?.name || userName;
+    }
+
+    const payment = await payments.submitPayment(
+      userId,
+      userName,
+      items,
+      total,
+      transactionId
+    );
+
+    return c.json({
+      success: true,
+      payment,
+      message: "Payment submitted for approval",
+    });
+  } catch (error) {
+    console.error("Error submitting payment:", error);
+    return c.json({ error: "Failed to submit payment", details: String(error) }, 500);
+  }
+});
+
+// Get pending payments (admin only)
+app.get("/make-server-98d801c7/payments/pending", async (c) => {
+  try {
+    const pendingPayments = await payments.getPendingPayments();
+    return c.json({ payments: pendingPayments });
+  } catch (error) {
+    console.error("Error fetching pending payments:", error);
+    return c.json({ error: "Failed to fetch payments", details: String(error) }, 500);
+  }
+});
+
+// Approve payment (admin only)
+app.post("/make-server-98d801c7/payments/:paymentId/approve", async (c) => {
+  try {
+    const paymentId = c.req.param("paymentId");
+    await payments.approvePayment(paymentId);
+    return c.json({ success: true, message: "Payment approved" });
+  } catch (error) {
+    console.error("Error approving payment:", error);
+    return c.json({ error: "Failed to approve payment", details: String(error) }, 500);
+  }
+});
+
+// Reject payment (admin only)
+app.post("/make-server-98d801c7/payments/:paymentId/reject", async (c) => {
+  try {
+    const paymentId = c.req.param("paymentId");
+    await payments.rejectPayment(paymentId);
+    return c.json({ success: true, message: "Payment rejected" });
+  } catch (error) {
+    console.error("Error rejecting payment:", error);
+    return c.json({ error: "Failed to reject payment", details: String(error) }, 500);
   }
 });
 

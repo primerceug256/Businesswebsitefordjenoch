@@ -21,6 +21,7 @@ export async function saveTrackMetadata(trackData: {
   id: string;
   title: string;
   type: string;
+  mediaType: string; // 'audio' or 'video'
   duration: string;
   releaseDate: string;
   audioUrl: string;

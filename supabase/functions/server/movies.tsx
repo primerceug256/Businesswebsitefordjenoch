@@ -22,10 +22,13 @@ export async function saveMovieMetadata(movieData: {
   title: string;
   description: string;
   genre: string;
+  vj?: string;
+  type?: string; // 'movie' or 'series'
   duration: string;
   releaseYear: string;
   quality: string;
   videoUrl: string;
+  thumbnail?: string;
   fileName: string;
 }) {
   await kv.set(`movie:${movieData.id}`, movieData);
