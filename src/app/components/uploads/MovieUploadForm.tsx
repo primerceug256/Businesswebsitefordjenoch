@@ -18,35 +18,49 @@ export function MovieUploadForm({ onSuccess }: { onSuccess: () => void }) {
     setProgress(10);
 
     try {
-      // 1. Generate unique file name
-      const fileName = `${Date.now()}-${selectedFile.name.replace(/\s/g, '_')}`;
+      // Logic: Universal Bucket + movies/ folder
+      const fileName = `movies/${Date.now()}-${selectedFile.name.replace(/\s/g, '_')}`;
       
-      // 2. Upload to the MOVIE bucket
       const { error: uploadError } = await supabase.storage
-        .from('make-98d801c7-movies')
+        .from('make-98d801c7-music')
         .upload(fileName, selectedFile);
 
       if (uploadError) throw uploadError;
-      setProgress(70);
+      setProgress(60);
 
-      // 3. Get the link
       const { data: { publicUrl } } = supabase.storage
-        .from('make-98d801c7-movies')
+        .from('make-98d801c7-music')
         .getPublicUrl(fileName);
 
-      // 4. Save to Database Table
       const { error: dbError } = await supabase
         .from('movies')
         .insert([{
           title: title || selectedFile.name,
           video_url: publicUrl,
-          quality: "HD 1080p",
+          quality: "HD",
           release_year: new Date().getFullYear().toString()
         }]);
 
       if (dbError) throw dbError;
-
-      alert("Movie Published Successfully!");
+      alert("Movie Published!");
       onSuccess();
       window.location.reload();
-    } catch (
+    } catch (err: any) { alert("Error: " + err.message); } finally { setUploading(false); }
+  };
+
+  return (
+    <form onSubmit={handleUpload} className="space-y-4">
+      <div className="p-6 border-2 border-dashed rounded-2xl text-center bg-gray-50">
+        <input type="file" accept="video/*" onChange={e => setSelectedFile(e.target.files?.[0] || null)} className="hidden" id="mov-up" />
+        <label htmlFor="mov-up" className="cursor-pointer block">
+          <Film className="mx-auto mb-2 text-red-600 w-8 h-8" />
+          <p className="text-xs font-bold text-gray-900">{selectedFile ? selectedFile.name : "Select Video File"}</p>
+        </label>
+      </div>
+      <input placeholder="Movie Title" className="w-full p-4 bg-gray-100 rounded-xl font-bold" value={title} onChange={e => setTitle(e.target.value)} required />
+      <button disabled={uploading || !selectedFile} className="w-full bg-red-600 text-white py-4 rounded-xl font-black uppercase shadow-lg">
+        {uploading ? `Uploading... ${progress}%` : "Publish Movie"}
+      </button>
+    </form>
+  );
+}
