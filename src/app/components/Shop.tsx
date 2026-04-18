@@ -1,55 +1,43 @@
-// src/app/components/Shop.tsx
 import { useState } from "react";
-import { ShoppingCart, MessageSquare, Mic } from "lucide-react";
+import { Mic, ShoppingCart } from "lucide-react";
 
-export function Shop({ onAddToCart }: { onAddToCart: any }) {
+export function Shop({ onAddToCart, searchQuery = "" }: any) {
   const [dropName, setDropName] = useState("");
 
-  const handleAddDrop = (type: string) => {
-    if (!dropName) {
-      alert("Please type the name you want in your DJ Drop first!");
-      return;
-    }
+  const handleAdd = (style: string) => {
+    if (!dropName) return alert("Type your DJ Name first!");
     onAddToCart({
       id: `drop-${Date.now()}`,
-      name: `Custom Drop: "${dropName}" (${type})`,
+      name: `Custom DJ Drop: ${dropName} (${style})`,
       price: 8000,
-      category: "drop",
-      description: `Name to be voiced: ${dropName}`
+      category: "drop"
     });
     setDropName("");
   };
 
   return (
-    <section id="shop" className="py-20 bg-gray-50">
+    <section id="shop" className="py-20 bg-white">
       <div className="max-w-4xl mx-auto px-4">
-        <div className="text-center mb-10">
-          <h2 className="text-3xl font-black uppercase">Order DJ Drops</h2>
-          <p className="text-gray-600">Type your name below and choose your style</p>
-        </div>
-
-        <div className="bg-white p-6 rounded-2xl shadow-xl border-2 border-orange-500 mb-10">
-          <label className="block text-sm font-bold mb-2">1. TYPE YOUR DJ NAME / TAGLINE:</label>
+        <h2 className="text-3xl font-black italic text-center mb-10 uppercase tracking-tighter">Order Custom <span className="text-orange-600">DJ Drops</span></h2>
+        
+        <div className="bg-gray-900 text-white p-8 rounded-[40px] shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-8 opacity-10"><Mic size={120}/></div>
+          <p className="text-orange-500 font-bold text-xs uppercase mb-2">Step 1: Enter your details</p>
           <input 
-            type="text" 
-            placeholder="e.g. 'DJ ENOCH ON THE MIX' or 'THE PARTY BEAST'" 
-            className="w-full p-4 border-2 rounded-xl text-lg mb-6 outline-none focus:border-black"
+            className="w-full bg-white/10 border border-white/20 p-5 rounded-2xl text-xl font-bold mb-8 outline-none focus:border-orange-500"
+            placeholder="Type your DJ Name or Tagline..."
             value={dropName}
-            onChange={(e) => setDropName(e.target.value)}
+            onChange={e => setDropName(e.target.value)}
           />
-
+          
+          <p className="text-orange-500 font-bold text-xs uppercase mb-4">Step 2: Choose your style (8,000 UGX each)</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button onClick={() => handleAddDrop("Signature Style")} className="bg-black text-white p-4 rounded-xl font-bold hover:bg-orange-600">
-              Signature Drop <br/> <span className="text-xs">8,000 UGX</span>
-            </button>
-            <button onClick={() => handleAddDrop("High Energy")} className="bg-black text-white p-4 rounded-xl font-bold hover:bg-orange-600">
-              Party Starter <br/> <span className="text-xs">8,000 UGX</span>
-            </button>
-            <button onClick={() => handleAddDrop("Deep/Club")} className="bg-black text-white p-4 rounded-xl font-bold hover:bg-orange-600">
-              Club Banger <br/> <span className="text-xs">8,000 UGX</span>
-            </button>
+            {['Signature Style', 'Energy Style', 'Deep Club Style'].map(style => (
+              <button key={style} onClick={() => handleAdd(style)} className="bg-white text-black p-4 rounded-2xl font-black text-xs uppercase hover:bg-orange-600 hover:text-white transition-all">
+                Add {style}
+              </button>
+            ))}
           </div>
-          <p className="text-[10px] text-gray-400 mt-4 text-center">Admin will generate your audio and send via email/WhatsApp after payment verification.</p>
         </div>
       </div>
     </section>
