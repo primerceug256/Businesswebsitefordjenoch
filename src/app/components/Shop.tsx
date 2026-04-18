@@ -1,64 +1,55 @@
-import { motion } from "motion/react";
-import { ShoppingCart, Music, Laptop } from "lucide-react";
+// src/app/components/Shop.tsx
 import { useState } from "react";
+import { ShoppingCart, MessageSquare, Mic } from "lucide-react";
 
-export interface Product {
-  id: string;
-  name: string;
-  price: number;
-  category: "drop" | "software";
-  description: string;
-  features: string[];
-}
+export function Shop({ onAddToCart }: { onAddToCart: any }) {
+  const [dropName, setDropName] = useState("");
 
-const products: Product[] = [
-  { id: "drop-1", name: "DJ Enoch Pro Signature Drop", price: 8000, category: "drop", description: "Professional DJ drop with custom voice recording", features: ["High-quality audio", "Custom name recording"] },
-  { id: "drop-2", name: "Party Starter DJ Drop", price: 8000, category: "drop", description: "Energetic DJ drop perfect for party mixes", features: ["High-energy voice"] },
-  { id: "drop-3", name: "Club Banger DJ Drop", price: 8000, category: "drop", description: "Heavy-hitting club DJ drop", features: ["Deep bass effects"] },
-  { id: "software-1", name: "Sony Acid Pro Software", price: 15000, category: "software", description: "Professional DJ mixing software with advanced features", features: ["Multi-track mixing"] },
-  { id: "software-2", name: "Sony Vegas Pro", price: 15000, category: "software", description: "Complete beat creation and mixing suite", features: ["Beat creation tools"] },
-  { id: "software-3", name: "Virtual DJ", price: 15000, category: "software", description: "Professional software for live DJ performances", features: ["Live mixing controls"] }
-];
-
-interface ShopProps {
-  onAddToCart: (product: Product) => void;
-  searchQuery?: string;
-}
-
-export function Shop({ onAddToCart, searchQuery = "" }: ShopProps) {
-  const [filter, setFilter] = useState<"all" | "drop" | "software">("all");
-
-  const filteredProducts = products.filter(product => {
-    const matchesCategory = filter === "all" || product.category === filter;
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          product.description.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  const handleAddDrop = (type: string) => {
+    if (!dropName) {
+      alert("Please type the name you want in your DJ Drop first!");
+      return;
+    }
+    onAddToCart({
+      id: `drop-${Date.now()}`,
+      name: `Custom Drop: "${dropName}" (${type})`,
+      price: 8000,
+      category: "drop",
+      description: `Name to be voiced: ${dropName}`
+    });
+    setDropName("");
+  };
 
   return (
-    <section id="shop" className="py-20 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} className="text-center mb-12">
-          <h2 className="text-4xl font-black text-gray-900 mb-4">Shop DJ Products</h2>
-          <div className="w-24 h-1 bg-orange-600 mx-auto mb-4"></div>
-        </motion.div>
-
-        <div className="flex flex-wrap justify-center gap-4 mb-12">
-          <button onClick={() => setFilter("all")} className={`px-6 py-3 rounded-lg font-semibold ${filter === "all" ? "bg-orange-600 text-white" : "bg-gray-100"}`}>All</button>
-          <button onClick={() => setFilter("drop")} className={`px-6 py-3 rounded-lg font-semibold ${filter === "drop" ? "bg-orange-600 text-white" : "bg-gray-100"}`}>DJ Drops</button>
-          <button onClick={() => setFilter("software")} className={`px-6 py-3 rounded-lg font-semibold ${filter === "software" ? "bg-orange-600 text-white" : "bg-gray-100"}`}>Software</button>
+    <section id="shop" className="py-20 bg-gray-50">
+      <div className="max-w-4xl mx-auto px-4">
+        <div className="text-center mb-10">
+          <h2 className="text-3xl font-black uppercase">Order DJ Drops</h2>
+          <p className="text-gray-600">Type your name below and choose your style</p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {filteredProducts.map((product) => (
-            <div key={product.id} className="bg-white rounded-lg border border-gray-200 overflow-hidden p-4">
-               <h3 className="font-bold text-gray-900 mb-1 h-12 overflow-hidden">{product.name}</h3>
-               <p className="text-2xl font-black text-orange-600 mb-4">{product.price.toLocaleString()} UGX</p>
-               <button onClick={() => onAddToCart(product)} className="w-full bg-orange-600 text-white py-3 rounded-lg font-bold hover:bg-orange-700 flex items-center justify-center gap-2">
-                 <ShoppingCart className="w-4 h-4" /> Add to Cart
-               </button>
-            </div>
-          ))}
+        <div className="bg-white p-6 rounded-2xl shadow-xl border-2 border-orange-500 mb-10">
+          <label className="block text-sm font-bold mb-2">1. TYPE YOUR DJ NAME / TAGLINE:</label>
+          <input 
+            type="text" 
+            placeholder="e.g. 'DJ ENOCH ON THE MIX' or 'THE PARTY BEAST'" 
+            className="w-full p-4 border-2 rounded-xl text-lg mb-6 outline-none focus:border-black"
+            value={dropName}
+            onChange={(e) => setDropName(e.target.value)}
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <button onClick={() => handleAddDrop("Signature Style")} className="bg-black text-white p-4 rounded-xl font-bold hover:bg-orange-600">
+              Signature Drop <br/> <span className="text-xs">8,000 UGX</span>
+            </button>
+            <button onClick={() => handleAddDrop("High Energy")} className="bg-black text-white p-4 rounded-xl font-bold hover:bg-orange-600">
+              Party Starter <br/> <span className="text-xs">8,000 UGX</span>
+            </button>
+            <button onClick={() => handleAddDrop("Deep/Club")} className="bg-black text-white p-4 rounded-xl font-bold hover:bg-orange-600">
+              Club Banger <br/> <span className="text-xs">8,000 UGX</span>
+            </button>
+          </div>
+          <p className="text-[10px] text-gray-400 mt-4 text-center">Admin will generate your audio and send via email/WhatsApp after payment verification.</p>
         </div>
       </div>
     </section>
