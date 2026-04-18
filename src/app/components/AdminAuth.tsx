@@ -18,17 +18,20 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const u = session?.user ?? null;
+    const checkUser = (u: any) => {
       setUser(u);
-      setIsAdmin(u?.email === "primerceug@gmail.com");
+      // Force lowercase check to prevent login errors
+      const email = u?.email?.toLowerCase() || "";
+      setIsAdmin(email === "primerceug@gmail.com");
+    };
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      checkUser(session?.user ?? null);
       setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      const u = session?.user ?? null;
-      setUser(u);
-      setIsAdmin(u?.email === "primerceug@gmail.com");
+      checkUser(session?.user ?? null);
       setLoading(false);
     });
 
@@ -40,7 +43,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     window.location.reload();
   };
 
-  if (loading) return <div className="h-screen w-screen flex items-center justify-center bg-black text-white font-black">DJ ENOCH PRO...</div>;
+  if (loading) return <div className="h-screen w-screen flex items-center justify-center bg-black text-white font-black italic">DJ ENOCH PRO...</div>;
 
   return (
     <AuthContext.Provider value={{ user, isAdmin, signOut }}>
@@ -54,44 +57,58 @@ export function useAuth() {
   return context || { user: null, isAdmin: false, signOut: async () => {} };
 }
 
-export function AuthModal({ onClose, initialMode = "login" }: { onClose: () => void, initialMode?: "login" | "signup" }) {
+export function AuthModal({ onClose, mode = "login" }: { onClose: () => void, mode?: "login" | "signup" }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isSignUp, setIsSignUp] = useState(initialMode === "signup");
+  const [isSignUp, setIsSignUp] = useState(mode === "signup");
   const [authLoading, setAuthLoading] = useState(false);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthLoading(true);
     
-    // For admin primerceug@gmail.com, use the password enoch256FAN
-    const { error } = isSignUp 
-      ? await supabase.auth.signUp({ email, password })
-      : await supabase.auth.signInWithPassword({ email, password });
+    try {
+      const { error } = isSignUp 
+        ? await supabase.auth.signUp({ email, password })
+        : await supabase.auth.signInWithPassword({ email, password });
 
-    if (error) alert(error.message);
-    else {
-      alert(isSignUp ? "Account created! Please check your email for a link." : "Logged in successfully!");
-      onClose();
+      if (error) {
+        alert(error.message);
+      } else {
+        onClose();
+        if (isSignUp) alert("Account created! Log in now.");
+      }
+    } catch (err) {
+      alert("An unexpected error occurred.");
+    } finally {
+      setAuthLoading(false);
     }
-    setAuthLoading(false);
   };
 
   return (
     <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
-      <div className="bg-white rounded-[40px] p-10 w-full max-w-md text-black shadow-2xl">
-        <h2 className="text-3xl font-black uppercase italic tracking-tighter mb-2">
-          {isSignUp ? "Join The" : "Welcome"} <span className="text-orange-600">Beast</span>
+      <div className="bg-white rounded-[40px] p-8 w-full max-w-md text-black shadow-2xl">
+        <h2 className="text-2xl font-black uppercase italic mb-1">
+          {isSignUp ? "Join" : "Welcome"} <span className="text-orange-600">Beast</span>
         </h2>
-        <p className="text-gray-400 text-xs font-bold uppercase mb-8">
-          {isSignUp ? "Create a free account to get started" : "Login to access your downloads"}
+        <p className="text-gray-400 text-[10px] font-bold uppercase mb-6">
+          Admin Email: primerceug@gmail.com
         </p>
 
         <form onSubmit={handleAuth} className="space-y-4">
-          <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase ml-2 text-gray-400">Email Address</label>
-            <input type="email" placeholder="primerceug@gmail.com" className="w-full p-4 bg-gray-100 rounded-2xl outline-none border-2 border-transparent focus:border-orange-500 font-bold" value={email} onChange={e => setEmail(e.target.value)} required />
-          </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase ml-2 text-gray-400">Password</label>
-            <input type="password" placeholder="••••••••" className="w-full p-4 bg-gray-100 rounded-2xl outli
+          <input type="email" placeholder="Email" className="w-full p-4 bg-gray-100 rounded-2xl outline-none border-2 border-transparent focus:border-orange-500 font-bold" value={email} onChange={e => setEmail(e.target.value)} required />
+          <input type="password" placeholder="Password" className="w-full p-4 bg-gray-100 rounded-2xl outline-none border-2 border-transparent focus:border-orange-500 font-bold" value={password} onChange={e => setPassword(e.target.value)} required />
+          
+          <button disabled={authLoading} className="w-full bg-orange-600 text-white py-4 rounded-2xl font-black uppercase shadow-lg shadow-orange-600/30">
+            {authLoading ? "Waiting..." : isSignUp ? "Create Account" : "Login Now"}
+          </button>
+        </form>
+
+        <button onClick={() => setIsSignUp(!isSignUp)} className="w-full mt-6 text-[10px] font-black uppercase text-gray-400 hover:text-black">
+          {isSignUp ? "Switch to Login" : "Switch to Sign Up"}
+        </button>
+        <button onClick={onClose} className="w-full mt-4 text-[10px] font-black uppercase text-red-500">Close</button>
+      </div>
+    </div>
+  );
+}
