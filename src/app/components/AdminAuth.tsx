@@ -1,136 +1,101 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from "react";
-import { Lock, LogOut } from "lucide-react";
-import { motion } from "motion/react";
+import { createClient } from "@supabase/supabase-js";
+import { projectId, publicAnonKey } from "/utils/supabase/info";
 
-interface AdminContextType {
-  isAuthenticated: boolean;
-  login: (password: string) => boolean;
-  logout: () => void;
+const supabase = createClient(`https://${projectId}.supabase.co`, publicAnonKey);
+
+interface AuthContextType {
+  user: any;
+  isAdmin: boolean;
+  signOut: () => Promise<void>;
 }
 
-const AdminContext = createContext<AdminContextType | undefined>(undefined);
-
-// Admin password - In production, this should be environment variable
-const ADMIN_PASSWORD = "enoch2026";
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    // Check if user is already authenticated (stored in sessionStorage)
-    const authStatus = sessionStorage.getItem("admin_authenticated");
-    if (authStatus === "true") {
-      setIsAuthenticated(true);
-    }
+    // Check active sessions
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setIsAdmin(session?.user?.email === "primerceug@gmail.com");
+    });
+
+    // Listen for changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setIsAdmin(session?.user?.email === "primerceug@gmail.com");
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = (password: string): boolean => {
-    if (password === ADMIN_PASSWORD) {
-      setIsAuthenticated(true);
-      sessionStorage.setItem("admin_authenticated", "true");
-      return true;
-    }
-    return false;
-  };
-
-  const logout = () => {
-    setIsAuthenticated(false);
-    sessionStorage.removeItem("admin_authenticated");
+  const signOut = async () => {
+    await supabase.auth.signOut();
   };
 
   return (
-    <AdminContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ user, isAdmin, signOut }}>
       {children}
-    </AdminContext.Provider>
+    </AuthContext.Provider>
   );
 }
 
-export function useAdmin() {
-  const context = useContext(AdminContext);
-  if (!context) {
-    throw new Error("useAdmin must be used within AdminAuthProvider");
-  }
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error("useAuth must be used within AdminAuthProvider");
   return context;
 }
 
-export function AdminLoginModal({ onClose }: { onClose: () => void }) {
+// Updated Login Modal
+export function AuthModal({ onClose }: { onClose: () => void }) {
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const { login } = useAdmin();
+  const [loading, setLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = login(password);
-    if (success) {
-      onClose();
-    } else {
-      setError("Invalid password");
-      setPassword("");
-    }
+    setLoading(true);
+    
+    const { error } = isSignUp 
+      ? await supabase.auth.signUp({ email, password })
+      : await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) alert(error.message);
+    else onClose();
+    setLoading(false);
   };
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-2xl shadow-2xl z-50 p-8"
-      >
-        <div className="flex items-center gap-3 mb-6">
-          <div className="bg-orange-600 p-3 rounded-lg">
-            <Lock className="w-6 h-6 text-white" />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900">Admin Login</h2>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="password" className="block text-gray-900 font-semibold mb-2">
-              Password
-            </label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:outline-none"
-              placeholder="Enter admin password"
-              autoFocus
-            />
-            {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
-          </div>
-
-          <button
-            type="submit"
-            className="w-full bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-lg font-bold transition-all"
-          >
-            Login
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
+      <div className="bg-white rounded-3xl p-8 w-full max-w-md text-black">
+        <h2 className="text-2xl font-black uppercase mb-2">{isSignUp ? "Create Account" : "Welcome Back"}</h2>
+        <p className="text-gray-500 text-sm mb-6">Login to access your profile and purchases.</p>
+        
+        <form onSubmit={handleAuth} className="space-y-4">
+          <input 
+            type="email" placeholder="Email Address" 
+            className="w-full p-4 bg-gray-100 rounded-xl outline-none border-2 border-transparent focus:border-orange-500"
+            value={email} onChange={e => setEmail(e.target.value)} required
+          />
+          <input 
+            type="password" placeholder="Password" 
+            className="w-full p-4 bg-gray-100 rounded-xl outline-none border-2 border-transparent focus:border-orange-500"
+            value={password} onChange={e => setPassword(e.target.value)} required
+          />
+          <button disabled={loading} className="w-full bg-black text-white py-4 rounded-xl font-bold uppercase hover:bg-orange-600 transition-all">
+            {loading ? "Processing..." : isSignUp ? "Sign Up" : "Login"}
           </button>
         </form>
-      </motion.div>
-    </>
-  );
-}
-
-export function AdminLogoutButton() {
-  const { isAuthenticated, logout } = useAdmin();
-
-  if (!isAuthenticated) return null;
-
-  return (
-    <button
-      onClick={logout}
-      className="fixed top-4 right-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 z-40 shadow-lg"
-    >
-      <LogOut className="w-4 h-4" />
-      Logout Admin
-    </button>
+        
+        <button onClick={() => setIsSignUp(!isSignUp)} className="w-full mt-4 text-xs font-bold text-gray-400 hover:text-black">
+          {isSignUp ? "Already have an account? Login" : "Don't have an account? Sign Up"}
+        </button>
+        <button onClick={onClose} className="w-full mt-2 text-xs font-bold text-red-500 uppercase">Cancel</button>
+      </div>
+    </div>
   );
 }
