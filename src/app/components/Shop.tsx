@@ -1,43 +1,47 @@
 import { useState } from "react";
-import { Mic, ShoppingCart } from "lucide-react";
+import { Mic, CheckCircle } from "lucide-react";
 
-export function Shop({ onAddToCart, searchQuery = "" }: any) {
-  const [dropName, setDropName] = useState("");
+export function Shop({ onAddToCart }: any) {
+  const [name, setName] = useState("");
 
-  const handleAdd = (style: string) => {
-    if (!dropName) return alert("Type your DJ Name first!");
+  const add = (style: string) => {
+    if(!name) return alert("Type your DJ Name/Tagline first!");
     onAddToCart({
       id: `drop-${Date.now()}`,
-      name: `Custom DJ Drop: ${dropName} (${style})`,
+      name: `DJ DROP: "${name}" (${style})`,
       price: 8000,
-      category: "drop"
+      category: 'drop',
+      description: "Admin will voice this name and send via WhatsApp/Email."
     });
-    setDropName("");
+    setName("");
+    alert("Added to cart! Proceed to checkout to send proof of payment.");
   };
 
   return (
     <section id="shop" className="py-20 bg-white">
       <div className="max-w-4xl mx-auto px-4">
-        <h2 className="text-3xl font-black italic text-center mb-10 uppercase tracking-tighter">Order Custom <span className="text-orange-600">DJ Drops</span></h2>
-        
-        <div className="bg-gray-900 text-white p-8 rounded-[40px] shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-8 opacity-10"><Mic size={120}/></div>
-          <p className="text-orange-500 font-bold text-xs uppercase mb-2">Step 1: Enter your details</p>
-          <input 
-            className="w-full bg-white/10 border border-white/20 p-5 rounded-2xl text-xl font-bold mb-8 outline-none focus:border-orange-500"
-            placeholder="Type your DJ Name or Tagline..."
-            value={dropName}
-            onChange={e => setDropName(e.target.value)}
-          />
-          
-          <p className="text-orange-500 font-bold text-xs uppercase mb-4">Step 2: Choose your style (8,000 UGX each)</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {['Signature Style', 'Energy Style', 'Deep Club Style'].map(style => (
-              <button key={style} onClick={() => handleAdd(style)} className="bg-white text-black p-4 rounded-2xl font-black text-xs uppercase hover:bg-orange-600 hover:text-white transition-all">
-                Add {style}
-              </button>
-            ))}
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-black uppercase italic">Order <span className="text-orange-600">Custom DJ Drops</span></h2>
+          <p className="text-gray-500 text-sm font-bold">Voice: 8,000 UGX | Delivery: Instant after verification</p>
+        </div>
+
+        <div className="bg-gray-900 rounded-[40px] p-8 text-white shadow-2xl relative overflow-hidden">
+          <div className="relative z-10">
+            <p className="text-orange-500 font-black text-[10px] uppercase mb-2 tracking-widest">Step 1: Enter your name</p>
+            <input 
+              value={name} onChange={e => setName(e.target.value)}
+              placeholder="e.g. DJ ENOCH THE PARTY BEAST"
+              className="w-full bg-white/10 border-2 border-white/10 p-5 rounded-2xl text-xl font-bold mb-8 outline-none focus:border-orange-500"
+            />
+
+            <p className="text-orange-500 font-black text-[10px] uppercase mb-4 tracking-widest">Step 2: Choose your style</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <button onClick={() => add('Signature')} className="bg-white text-black p-5 rounded-2xl font-black text-xs uppercase hover:bg-orange-600 hover:text-white transition-all">Signature Style</button>
+              <button onClick={() => add('Energy')} className="bg-white text-black p-5 rounded-2xl font-black text-xs uppercase hover:bg-orange-600 hover:text-white transition-all">High Energy</button>
+              <button onClick={() => add('Deep Club')} className="bg-white text-black p-5 rounded-2xl font-black text-xs uppercase hover:bg-orange-600 hover:text-white transition-all">Deep Club Style</button>
+            </div>
           </div>
+          <Mic className="absolute -bottom-10 -right-10 text-white/5" size={200} />
         </div>
       </div>
     </section>
