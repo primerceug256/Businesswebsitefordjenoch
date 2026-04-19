@@ -1,7 +1,7 @@
 import { motion } from "motion/react";
 import { Film, Download, Clock, Star, Loader } from "lucide-react";
 import { useState, useEffect } from "react";
-import { projectId, publicAnonKey } from "/utils/supabase/info";
+import { projectId, publicAnonKey } from "../../../utils/supabase/info";
 
 interface Movie {
   id: string;
