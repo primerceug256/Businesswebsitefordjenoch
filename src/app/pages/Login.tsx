@@ -9,7 +9,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, loginWithGoogle } = useAuth();
+  const auth = useAuth();
   const navigate = useNavigate();
 
   const handleEmailLogin = async (e: React.FormEvent) => {
@@ -17,7 +17,7 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      await login(email, password);
+      await auth.login(email, password);
       navigate('/');
     } catch (err: any) {
       setError(err.message || 'Login failed');
@@ -30,13 +30,12 @@ export default function Login() {
     <div className="min-h-screen bg-black flex items-center justify-center px-4">
       <div className="bg-gray-900 border border-gray-800 rounded-3xl p-8 w-full max-w-md shadow-2xl">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-black text-white uppercase tracking-tight">Welcome Back</h1>
-          <p className="text-gray-400 mt-2">Login to your account</p>
+          <h1 className="text-3xl font-black text-white uppercase tracking-tight">Login</h1>
+          <p className="text-gray-400 mt-1">Access the party beast library</p>
         </div>
 
-        {/* GOOGLE LOGIN */}
         <button 
-          onClick={loginWithGoogle}
+          onClick={() => auth.loginWithGoogle()}
           className="w-full bg-white text-black py-3 rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-gray-100 transition-all mb-6"
         >
           <FcGoogle size={24} /> Continue with Google
@@ -44,7 +43,7 @@ export default function Login() {
 
         <div className="relative flex items-center mb-6">
           <div className="flex-grow border-t border-gray-800"></div>
-          <span className="flex-shrink mx-4 text-gray-500 text-xs font-black">OR EMAIL</span>
+          <span className="mx-4 text-gray-500 text-[10px] font-black tracking-widest uppercase">Or Email</span>
           <div className="flex-grow border-t border-gray-800"></div>
         </div>
 
@@ -57,8 +56,8 @@ export default function Login() {
         <form onSubmit={handleEmailLogin} className="space-y-4">
           <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full px-4 py-3 bg-black border border-gray-800 rounded-xl text-white outline-none focus:border-orange-500" />
           <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full px-4 py-3 bg-black border border-gray-800 rounded-xl text-white outline-none focus:border-orange-500" />
-          <button type="submit" disabled={loading} className="w-full bg-orange-600 text-white py-4 rounded-xl font-black hover:bg-orange-700 disabled:opacity-50 flex items-center justify-center gap-2">
-            {loading ? <Loader2 className="animate-spin" /> : 'LOGIN BEAST'}
+          <button type="submit" disabled={loading} className="w-full bg-orange-600 text-white py-4 rounded-xl font-black hover:bg-orange-700 disabled:opacity-50 flex items-center justify-center gap-2 uppercase tracking-widest">
+            {loading ? <Loader2 className="animate-spin" /> : 'Login'}
           </button>
         </form>
 
