@@ -41,14 +41,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser({
           id: session.user.id,
           email: session.user.email || '',
-          name: session.user.user_metadata.full_name,
+          name: session.user.user_metadata.full_name || session.user.email?.split('@')[0],
           avatar: session.user.user_metadata.avatar_url
         });
       }
       setLoading(false);
     });
 
-    // Listen for Auth changes (Login/Logout)
+    // Listen for Auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUser({
@@ -93,4 +93,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${publicAnonKey}`, 'apikey': publicAnonKey },
       body: JSON.stringify({ email, password }),
     });
-    const data = await response.
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Login Failed');
+    setUser(data.user);
+    localStorage.setItem('user', JSON.stringify(data.user));
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    localStorage.removeItem('user');
+  };
+
+  if (loading) return null;
+
+  return (
+    <AuthContext.Provider value={{ user, isAdmin, login, signup, loginWithGoogle, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error('AuthProvider missing');
+  return context;
+}
