@@ -33,7 +33,7 @@ export default function Login() {
           <div className="bg-orange-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
             <LogIn size={32} className="text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Welcome Back</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Welcome Back Boss</h1>
           <p className="text-gray-600 mt-2">Login to your account</p>
         </div>
 
