@@ -32,27 +32,22 @@ export function MusicUploadForm({ onSuccess }: { onSuccess: () => void }) {
       data.append("genre", formData.genre);
       data.append("duration", formData.duration);
       data.append("releaseDate", formData.releaseDate);
-      // IMPORTANT: This ensures the library can "see" and display the track
       data.append("mediaType", "audio"); 
 
       const xhr = new XMLHttpRequest();
       
-      // Track Progress
       xhr.upload.addEventListener("progress", (event) => {
         if (event.lengthComputable) {
           setUploadProgress(Math.round((event.loaded / event.total) * 100));
         }
       });
 
-      // Handle Completion
       xhr.addEventListener("load", () => {
         if (xhr.status === 200 || xhr.status === 201) {
           setUploadSuccess(true);
           setUploading(false);
           setSelectedFile(null);
-          // Clear title for next upload
           setFormData({ ...formData, title: "" });
-          
           setTimeout(() => {
             onSuccess();
             setUploadSuccess(false);
@@ -60,16 +55,16 @@ export function MusicUploadForm({ onSuccess }: { onSuccess: () => void }) {
         } else {
           try {
             const response = JSON.parse(xhr.responseText || "{}");
-            setError(response.error || "Server rejected the upload");
+            setError(response.error || "Upload failed on server.");
           } catch (err) {
-            setError("Server error occurred during processing.");
+            setError("Server error during processing.");
           }
           setUploading(false);
         }
       });
 
       xhr.addEventListener("error", () => {
-        setError("Network connection failed. Please check your internet.");
+        setError("Network failed. Check your connection.");
         setUploading(false);
       });
 
@@ -77,7 +72,6 @@ export function MusicUploadForm({ onSuccess }: { onSuccess: () => void }) {
       xhr.setRequestHeader("Authorization", `Bearer ${publicAnonKey}`);
       xhr.send(data);
     } catch (err) {
-      console.error("Upload error:", err);
       setError("An unexpected error occurred.");
       setUploading(false);
     }
@@ -87,7 +81,7 @@ export function MusicUploadForm({ onSuccess }: { onSuccess: () => void }) {
     <div className="space-y-4">
       {uploadSuccess && (
         <div className="bg-green-600/20 text-green-400 p-3 rounded-lg flex items-center gap-2 border border-green-600/30 text-sm">
-          <CheckCircle size={16} /> Mix Uploaded! Check the Music library now.
+          <CheckCircle size={16} /> Mix Uploaded Successfully!
         </div>
       )}
       
@@ -118,7 +112,7 @@ export function MusicUploadForm({ onSuccess }: { onSuccess: () => void }) {
                 ) : (
                     <div className="flex flex-col items-center gap-2 opacity-50">
                         <Upload size={24} />
-                        <p className="text-xs uppercase font-black">Click to select MP3</p>
+                        <p className="text-xs uppercase font-black tracking-tighter">Click to select MP3</p>
                     </div>
                 )}
             </label>
@@ -135,4 +129,19 @@ export function MusicUploadForm({ onSuccess }: { onSuccess: () => void }) {
 
         <button
           type="submit"
-          disabled=
+          disabled={uploading || !selectedFile}
+          className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-slate-800 text-white font-black py-3 rounded-lg transition-all text-sm uppercase tracking-tighter flex items-center justify-center gap-2"
+        >
+          {uploading ? (
+            <>
+              <Loader size={16} className="animate-spin" />
+              {uploadProgress}%
+            </>
+          ) : (
+            "Upload Mix"
+          )}
+        </button>
+      </form>
+    </div>
+  );
+}
