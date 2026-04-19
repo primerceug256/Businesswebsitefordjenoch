@@ -6,198 +6,77 @@ import {
   Download, Check, X, ShieldCheck, Search, Clock
 } from 'lucide-react';
 import { projectId, publicAnonKey } from "../../../utils/supabase/info";
-
-// Import upload forms
 import { MusicUploadForm } from '../components/uploads/MusicUploadForm';
 import { MovieUploadForm } from '../components/uploads/MovieUploadForm';
 import { SoftwareUploadForm } from '../components/uploads/SoftwareUploadForm';
 
-// Duration mapping based on your Subscription plans
-const PLAN_DURATION_MAP: Record<string, number> = {
-  'spark': 0.083, // 2 hours
-  'blaze': 0.25,  // 6 hours
-  'daily': 1,
-  '3days': 3,
-  'weekly': 7,
-  '2weeks': 14,
-  'monthly': 30,
-  '2months': 60,
-  'gold': 90,
-  'platinum': 180,
-  'diamond': 365,
-  'unlimited': 36500 // 100 years
+const DURATIONS: Record<string, number> = {
+  'spark': 0.08, 'blaze': 0.25, 'daily': 1, '3days': 3, 'weekly': 7,
+  '2weeks': 14, 'monthly': 30, '2months': 60, 'gold': 90, 'platinum': 180,
+  'diamond': 365, 'unlimited': 36500
 };
 
 export default function AdminDashboard() {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
-  
-  // Tab Management
-  const [activeTab, setActiveTab] = useState<'overview' | 'uploads' | 'subscriptions' | 'users'>('overview');
-  
-  // Data States
-  const [usersList, setUsersList] = useState<any[]>([]);
-  const [pendingPayments, setPendingPayments] = useState<any[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [tab, setTab] = useState<'overview' | 'uploads' | 'subscriptions' | 'users'>('overview');
+  const [users, setUsers] = useState<any[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isAdmin) {
-      navigate('/');
-      return;
-    }
-    fetchAdminData();
+    if (!isAdmin) { navigate('/'); return; }
+    fetchData();
   }, [isAdmin, navigate]);
 
-  const fetchAdminData = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
-      // 1. Fetch Registered Users
-      const uRes = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/admin/users`, {
-        headers: { Authorization: `Bearer ${publicAnonKey}` }
-      });
-      const uData = await uRes.json();
-      setUsersList(uData.users || []);
-
-      // 2. Fetch Pending Payments
-      const pRes = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/payments/pending`, {
-        headers: { Authorization: `Bearer ${publicAnonKey}` }
-      });
-      const pData = await pRes.json();
-      setPendingPayments(pData.payments || []);
-
-    } catch (err) {
-      console.error("Admin Data Fetch Error:", err);
-    } finally {
-      setLoading(false);
-    }
+      const u = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/admin/users`, { headers: { Authorization: `Bearer ${publicAnonKey}` } });
+      const uD = await u.json(); setUsers(uD.users || []);
+      const p = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/payments/pending`, { headers: { Authorization: `Bearer ${publicAnonKey}` } });
+      const pD = await p.json(); setPayments(pD.payments || []);
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
-  const handleApprove = async (payment: any) => {
-    let planId = 'monthly';
-    try {
-        const items = JSON.parse(payment.items || '[]');
-        planId = items[0]?.id || 'monthly';
-    } catch(e) { 
-        planId = 'monthly'; 
-    }
-
-    const duration = PLAN_DURATION_MAP[planId] || 30;
-
-    if (!confirm(`Approve payment of UGX ${payment.total} for ${payment.userName}? (Grants ${duration} days access)`)) return;
-    
+  const handleApprove = async (pay: any) => {
+    let pId = 'monthly';
+    try { const items = JSON.parse(pay.items || '[]'); pId = items[0]?.id || 'monthly'; } catch(e) {}
+    const days = DURATIONS[pId] || 30;
+    if (!confirm(`Approve ${pay.userName} for ${pId}?`)) return;
     try {
       const res = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/admin/approve-subscription`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${publicAnonKey}` 
-        },
-        body: JSON.stringify({
-          paymentId: payment.id,
-          userId: payment.userId,
-          planId: planId,
-          durationDays: duration
-        })
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${publicAnonKey}` },
+        body: JSON.stringify({ paymentId: pay.id, userId: pay.userId, planId: pId, durationDays: days })
       });
-
-      if (res.ok) {
-        alert("Subscription Activated Successfully!");
-        fetchAdminData(); 
-      }
-    } catch (err) {
-      alert("Error during approval process.");
-    }
+      if (res.ok) { alert("Approved!"); fetchData(); }
+    } catch (e) { alert("Error"); }
   };
 
-  const handleReject = async (paymentId: string) => {
-    if (!confirm("Are you sure you want to reject this payment request?")) return;
-    try {
-      await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/payments/${paymentId}/reject`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${publicAnonKey}` }
-      });
-      fetchAdminData();
-    } catch (err) {
-      alert("Error rejecting payment.");
-    }
+  const handleReject = async (id: string) => {
+    if (!confirm("Reject?")) return;
+    await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/payments/${id}/reject`, { method: 'POST', headers: { Authorization: `Bearer ${publicAnonKey}` } });
+    fetchData();
   };
-
-  const filteredUsers = usersList.filter(u => 
-    u.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    u.email?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   if (!isAdmin) return null;
 
   return (
     <div className="bg-slate-950 text-white min-h-screen pb-20">
-      {/* Header Section */}
-      <div className="bg-slate-900 border-b border-slate-800 p-6 sticky top-0 z-30 shadow-2xl">
+      <div className="bg-slate-900 border-b border-slate-800 p-6 sticky top-0 z-30 shadow-xl">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-black text-orange-500 tracking-tighter">DJ ENOCH CONTROL</h1>
-            <p className="text-xs text-slate-500 uppercase font-bold">Mukono, Uganda Branch</p>
-          </div>
-          <button onClick={fetchAdminData} className="px-4 py-2 bg-orange-600/10 text-orange-500 border border-orange-500/20 rounded-lg text-sm font-bold hover:bg-orange-600 hover:text-white transition-all">
-            {loading ? 'Refreshing...' : 'Refresh Dashboard'}
+          <h1 className="text-xl font-black text-orange-500">DJ ENOCH ADMIN</h1>
+          <button onClick={fetchData} className="px-4 py-2 bg-orange-600/10 text-orange-500 rounded-lg text-xs font-bold hover:bg-orange-600 hover:text-white transition-all">
+            {loading ? '...' : 'Refresh'}
           </button>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 mt-8">
-        {/* Navigation Tabs */}
         <div className="flex flex-wrap gap-2 mb-8 bg-slate-900 p-1.5 rounded-2xl w-fit border border-slate-800">
-          {[
-            { id: 'overview', label: 'Stats', icon: DollarSign },
-            { id: 'subscriptions', label: 'Approvals', icon: ShieldCheck, count: pendingPayments.length },
-            { id: 'uploads', label: 'Upload Center', icon: Upload },
-            { id: 'users', label: 'User Base', icon: Users },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all ${
-                activeTab === tab.id ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20' : 'hover:bg-slate-800 text-slate-400'
-              }`}
-            >
-              <tab.icon size={18} />
-              {tab.label}
-              {tab.count !== undefined && tab.count > 0 && (
-                <span className="bg-white text-orange-600 text-[10px] px-2 py-0.5 rounded-full ring-2 ring-orange-500">{tab.count}</span>
-              )}
-            </button>
-          ))}
+          <button onClick={() => setTab('overview')} className={`px-5 py-2.5 rounded-xl text-sm font-bold ${tab==='overview'?'bg-orange-600':'text-slate-400'}`}>Stats</button>
+          <button onClick={() => setTab('subscriptions')} className={`px-5 py-2.5 rounded-xl text-sm font-bold ${tab==='subscriptions'?'bg-orange-600':'text-slate-400'}`}>Approvals ({payments.length})</button>
+          <button onClick={() => setTab('uploads')} className={`px-5 py-2.5 rounded-xl text-sm font-bold ${tab==='uploads'?'bg-orange-600':'text-slate-400'}`}>Uploads</button>
+          <button onClick={() => setTab('users')} className={`px-5 py-2.5 rounded-xl text-sm font-bold ${tab==='users'?'bg-orange-600':'text-slate-400'}`}>Users</button>
         </div>
-
-        {/* OVERVIEW CONTENT */}
-        {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 group hover:border-orange-500/50 transition-colors">
-              <Users className="text-blue-500 mb-4 group-hover:scale-110 transition-transform" size={32} />
-              <p className="text-4xl font-black">{usersList.length}</p>
-              <p className="text-slate-400">Total Registered Members</p>
-            </div>
-            <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 group hover:border-orange-500/50 transition-colors">
-              <ShieldCheck className="text-green-500 mb-4 group-hover:scale-110 transition-transform" size={32} />
-              <p className="text-4xl font-black">{pendingPayments.length}</p>
-              <p className="text-slate-400">Payments Waiting Approval</p>
-            </div>
-            <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 group hover:border-orange-500/50 transition-colors">
-               <DollarSign className="text-orange-500 mb-4 group-hover:scale-110 transition-transform" size={32} />
-               <p className="text-sm text-slate-400 mb-1">Estimated Sales Value</p>
-               <p className="text-3xl font-black text-orange-500">UGX {usersList.length * 1500}+</p>
-            </div>
-          </div>
-        )}
-
-        {/* SUBSCRIPTION APPROVALS CONTENT */}
-        {activeTab === 'subscriptions' && (
-          <div className="bg-slate-900 rounded-3xl border border-slate-800 overflow-hidden shadow-2xl">
-            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
-              <h2 className="text-xl font-bold flex items-center gap-2"><Clock className="text-orange-500" /> Pending Verification</h2>
-              <span className="text-xs font-bold text-slate-500">Cross-check Transaction IDs with your phone</span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead className="bg-
