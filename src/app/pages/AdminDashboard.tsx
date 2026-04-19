@@ -2,7 +2,11 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router';
 import { Upload, Trash2, Users, DollarSign, Music, Film, Download, Check, X } from 'lucide-react';
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { supabase } from '../context/supabaseClient';
+
+// Supabase project configuration
+const SUPABASE_URL = "https://nlhpnvzpbceolsbozrjw.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_4k8plBPAQLHH8gF7k8_Zcg__t6-qvz3";
 
 export default function AdminDashboard() {
   const { user, isAdmin } = useAuth();
@@ -55,7 +59,12 @@ export default function AdminDashboard() {
     setPendingPayments([]);
   };
 
-  const handleUpload = async () => {
+  const handleUpload = async (e?: React.FormEvent) => {
+    // Prevent form submission from refreshing the page
+    if (e) {
+      e.preventDefault();
+    }
+    
     if (!file) {
       alert('Please select a file');
       return;
@@ -65,65 +74,137 @@ export default function AdminDashboard() {
     setUploadProgress(0);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-
+      // Generate unique filename
+      const timestamp = Date.now();
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${timestamp}_${file.name}`;
+      
       if (uploadType === 'music') {
-        formData.append('title', musicTitle);
-        formData.append('type', musicType === 'audio' ? 'Audio' : 'Video');
-        formData.append('mediaType', musicType);
+        if (!musicTitle) {
+          alert('Please enter a title');
+          setUploading(false);
+          return;
+        }
 
-        const response = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/music/upload`,
-          {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${publicAnonKey}` },
-            body: formData,
-          }
-        );
+        // Upload file to Supabase Storage
+        const storagePath = `music/${fileName}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('media')
+          .upload(storagePath, file, {
+            cacheControl: '3600',
+            upsert: false,
+          });
 
-        if (!response.ok) throw new Error('Upload failed');
+        if (uploadError) throw uploadError;
+
+        // Get public URL
+        const { data: urlData } = supabase.storage.from('media').getPublicUrl(storagePath);
+
+        // Save metadata to database
+        const { error: dbError } = await supabase.from('music').insert({
+          title: musicTitle,
+          type: musicType === 'audio' ? 'Audio' : 'Video',
+          media_type: musicType,
+          file_url: urlData.publicUrl,
+          file_name: file.name,
+          created_at: new Date().toISOString(),
+        });
+
+        if (dbError) throw dbError;
+
         alert('Music uploaded successfully!');
         setMusicTitle('');
         setFile(null);
       } else if (uploadType === 'movies') {
-        formData.append('title', movieTitle);
-        formData.append('description', movieDescription);
-        formData.append('genre', movieGenre);
-        formData.append('vj', movieVJ);
-        formData.append('type', movieType);
-        if (thumbnail) formData.append('thumbnail', thumbnail);
+        if (!movieTitle) {
+          alert('Please enter a title');
+          setUploading(false);
+          return;
+        }
 
-        const response = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/movies/upload`,
-          {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${publicAnonKey}` },
-            body: formData,
+        // Upload main video file
+        const storagePath = `movies/${fileName}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('media')
+          .upload(storagePath, file, {
+            cacheControl: '3600',
+            upsert: false,
+          });
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage.from('media').getPublicUrl(storagePath);
+
+        // Upload thumbnail if provided
+        let thumbnailUrl = null;
+        if (thumbnail) {
+          const thumbName = `${timestamp}_thumb_${thumbnail.name}`;
+          const thumbPath = `thumbnails/${thumbName}`;
+          const { error: thumbError } = await supabase.storage
+            .from('media')
+            .upload(thumbPath, thumbnail, {
+              cacheControl: '3600',
+              upsert: false,
+            });
+
+          if (!thumbError) {
+            const { data: thumbUrlData } = supabase.storage.from('media').getPublicUrl(thumbPath);
+            thumbnailUrl = thumbUrlData.publicUrl;
           }
-        );
+        }
 
-        if (!response.ok) throw new Error('Upload failed');
+        // Save metadata to database
+        const { error: dbError } = await supabase.from('movies').insert({
+          title: movieTitle,
+          description: movieDescription,
+          genre: movieGenre,
+          vj: movieVJ,
+          type: movieType,
+          file_url: urlData.publicUrl,
+          thumbnail_url: thumbnailUrl,
+          file_name: file.name,
+          created_at: new Date().toISOString(),
+        });
+
+        if (dbError) throw dbError;
+
         alert('Movie/Series uploaded successfully!');
         setMovieTitle('');
         setMovieDescription('');
         setFile(null);
         setThumbnail(null);
       } else if (uploadType === 'software') {
-        formData.append('title', softwareTitle);
-        formData.append('description', softwareDescription);
-        formData.append('platform', softwarePlatform);
+        if (!softwareTitle) {
+          alert('Please enter a title');
+          setUploading(false);
+          return;
+        }
 
-        const response = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/software/upload`,
-          {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${publicAnonKey}` },
-            body: formData,
-          }
-        );
+        // Upload software file
+        const storagePath = `software/${fileName}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('media')
+          .upload(storagePath, file, {
+            cacheControl: '3600',
+            upsert: false,
+          });
 
-        if (!response.ok) throw new Error('Upload failed');
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage.from('media').getPublicUrl(storagePath);
+
+        // Save metadata to database
+        const { error: dbError } = await supabase.from('software').insert({
+          title: softwareTitle,
+          description: softwareDescription,
+          platform: softwarePlatform,
+          file_url: urlData.publicUrl,
+          file_name: file.name,
+          created_at: new Date().toISOString(),
+        });
+
+        if (dbError) throw dbError;
+
         alert('Software uploaded successfully!');
         setSoftwareTitle('');
         setSoftwareDescription('');
@@ -131,7 +212,7 @@ export default function AdminDashboard() {
       }
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Upload failed');
+      alert('Upload failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setUploading(false);
       setUploadProgress(0);
@@ -390,7 +471,8 @@ export default function AdminDashboard() {
             )}
 
             <button
-              onClick={handleUpload}
+              type="button"
+              onClick={(e) => handleUpload(e)}
               disabled={uploading}
               className="w-full mt-6 bg-orange-600 py-4 rounded-lg font-semibold hover:bg-orange-700 disabled:opacity-50 flex items-center justify-center gap-2"
             >
