@@ -11,7 +11,7 @@ interface AdminContextType {
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
 // Admin password - In production, this should be environment variable
-const ADMIN_PASSWORD = "enoch2026";
+const ADMIN_PASSWORD = "enoch256FAN";
 
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
