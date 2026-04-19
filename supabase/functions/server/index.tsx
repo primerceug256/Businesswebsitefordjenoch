@@ -1,46 +1,36 @@
 import { Hono } from "npm:hono";
 import { cors } from "npm:hono/cors";
-import { logger } from "npm:hono/logger";
-import * as kv from "./kv_store.tsx";
-import * as music from "./music.tsx";
-import * as movies from "./movies.tsx";
-import * as software from "./software.tsx";
-import * as auth from "./auth.tsx";
-import * as payments from "./payments.tsx";
-import { initializeUnifiedStorage } from "./unified-storage.tsx";
-import { cleanupOldBuckets } from "./cleanup-buckets.tsx";
 
+// Initialize the Hono app
 const app = new Hono();
 
-// 1. Logging for debugging
-app.use('*', logger(console.log));
-
-// 2. ULTRA-ROBUST CORS (Required for Supabase Edge Functions)
+// 1. COMPREHENSIVE CORS FIX
+// This allows your website to talk to this server without "Failed to fetch"
 app.use(
-  "/*",
+  "*",
   cors({
-    origin: "*", // Allows any website to call the API
-    allowHeaders: ["Content-Type", "Authorization", "x-client-info", "apikey"],
+    origin: "*",
+    allowHeaders: ["Content-Type", "Authorization", "apikey", "x-client-info"],
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     exposeHeaders: ["Content-Length"],
     maxAge: 600,
-  }),
+  })
 );
 
-// 3. OPTIONS Preflight handler (Fixes "Failed to fetch")
+// Handle preflight requests
 app.options("*", (c) => c.text("", 204));
 
-// Initialize system
-(async () => {
-  try {
-    await cleanupOldBuckets();
-    await initializeUnifiedStorage();
-  } catch (e) {
-    console.error("Initialization failed:", e);
-  }
-})();
+// ==========================================
+// DATABASE LOGIC (Imported from your files)
+// ==========================================
+import * as auth from "./auth.tsx";
+import * as music from "./music.tsx";
+import * as movies from "./movies.tsx";
+import * as software from "./software.tsx";
 
-// ==================== AUTH ENDPOINTS ====================
+// ==========================================
+// AUTH ROUTES
+// ==========================================
 
 app.post("/auth/signup", async (c) => {
   try {
@@ -60,69 +50,29 @@ app.post("/auth/login", async (c) => {
     const { passwordHash, ...userWithoutPassword } = user;
     return c.json({ user: userWithoutPassword });
   } catch (error) {
-    return c.json({ error: String(error) }, 401);
+    return c.json({ error: "Invalid email or password" }, 401);
   }
 });
 
-app.put("/user/update", async (c) => {
-  try {
-    const { userId, ...updates } = await c.req.json();
-    const user = await auth.updateUser(userId, updates);
-    const { passwordHash, ...userWithoutPassword } = user;
-    return c.json({ user: userWithoutPassword });
-  } catch (error) {
-    return c.json({ error: String(error) }, 400);
-  }
-});
-
-// ==================== MUSIC ENDPOINTS ====================
-
-app.post("/music/upload", async (c) => {
-  try {
-    const formData = await c.req.formData();
-    const file = formData.get("file") as File;
-    const title = formData.get("title") as string;
-    
-    if (!file) return c.json({ error: "No file" }, 400);
-
-    const arrayBuffer = await file.arrayBuffer();
-    const { fileName, publicUrl } = await music.uploadMusicFile(file.name, arrayBuffer, file.type);
-
-    const trackId = `track-${Date.now()}`;
-    await music.saveTrackMetadata({
-      id: trackId,
-      title: title || file.name,
-      type: "Latest Mix",
-      mediaType: "audio",
-      duration: "00:00",
-      releaseDate: new Date().toLocaleDateString(),
-      audioUrl: publicUrl,
-      fileName,
-    });
-
-    return c.json({ success: true, trackId, audioUrl: publicUrl });
-  } catch (error) {
-    return c.json({ error: "Upload failed", details: String(error) }, 500);
-  }
-});
+// ==========================================
+// CONTENT ROUTES
+// ==========================================
 
 app.get("/music/tracks", async (c) => {
   try {
     const tracks = await music.getAllTracks();
     return c.json({ tracks });
   } catch (error) {
-    return c.json({ error: String(error) }, 500);
+    return c.json({ error: "Failed to load music" }, 500);
   }
 });
-
-// ==================== MOVIES & SOFTWARE ====================
 
 app.get("/movies/list", async (c) => {
   try {
     const moviesList = await movies.getAllMovies();
     return c.json({ movies: moviesList });
   } catch (error) {
-    return c.json({ error: String(error) }, 500);
+    return c.json({ error: "Failed to load movies" }, 500);
   }
 });
 
@@ -131,8 +81,11 @@ app.get("/software/list", async (c) => {
     const softwareList = await software.getAllSoftware();
     return c.json({ software: softwareList });
   } catch (error) {
-    return c.json({ error: String(error) }, 500);
+    return c.json({ error: "Failed to load software" }, 500);
   }
 });
+
+// Health check
+app.get("/", (c) => c.json({ status: "DJ Enoch Server Running" }));
 
 Deno.serve(app.fetch);
