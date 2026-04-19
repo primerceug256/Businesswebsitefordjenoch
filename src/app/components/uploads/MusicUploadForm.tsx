@@ -32,6 +32,8 @@ export function MusicUploadForm({ onSuccess }: { onSuccess: () => void }) {
       data.append("genre", formData.genre);
       data.append("duration", formData.duration);
       data.append("releaseDate", formData.releaseDate);
+      // IMPORTANT: This line allows Music.tsx to filter and show the track
+      data.append("mediaType", "audio"); 
 
       const xhr = new XMLHttpRequest();
       
@@ -44,7 +46,7 @@ export function MusicUploadForm({ onSuccess }: { onSuccess: () => void }) {
 
       // Handle Completion
       xhr.addEventListener("load", () => {
-        if (xhr.status === 200) {
+        if (xhr.status === 200 || xhr.status === 201) {
           setUploadSuccess(true);
           setUploading(false);
           setSelectedFile(null);
@@ -54,9 +56,30 @@ export function MusicUploadForm({ onSuccess }: { onSuccess: () => void }) {
             setUploadSuccess(false);
           }, 3000);
         } else {
-          setError("Server rejected the upload");
+          const response = JSON.parse(xhr.responseText || "{}");
+          setError(response.error || "Server rejected the upload");
           setUploading(false);
         }
       });
 
-      xhr.open("POST", `https://${projectId}.supabase.
+      xhr.addEventListener("error", () => {
+        setError("Network connection failed.");
+        setUploading(false);
+      });
+
+      // Fixed the broken URL here:
+      xhr.open("POST", `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/music/upload`);
+      xhr.setRequestHeader("Authorization", `Bearer ${publicAnonKey}`);
+      xhr.send(data);
+    } catch (err) {
+      console.error("Upload error:", err);
+      setError("An unexpected error occurred.");
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {uploadSuccess && (
+        <div className="bg-green-600/20 text-green-400 p-3 rounded-lg flex items-center gap-2 border border-green-600/30 text-sm">
+          <CheckCircle size={16} /> Mix Uploaded! Check the Music library now.
