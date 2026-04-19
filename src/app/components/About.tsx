@@ -17,7 +17,7 @@ export function About() {
           </h2>
           <div className="w-24 h-1 bg-orange-600 mx-auto mb-4"></div>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Uganda's trusted source for professional DJ products and services
+            Uganda's trusted source for professional DJ products,Translated Movies,Software and Other Services
           </p>
         </motion.div>
 
