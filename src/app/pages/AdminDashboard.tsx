@@ -5,9 +5,7 @@ import {
   Upload, Users, DollarSign, Music, Film, 
   Download, Check, X, ShieldCheck, Search, Clock
 } from 'lucide-react';
-import { projectId, publicAnonKey }
- from 
-"../../../utils/supabase/info";
+import { projectId, publicAnonKey } from "../../../utils/supabase/info";
 
 // Import upload forms
 import { MusicUploadForm } from '../components/uploads/MusicUploadForm';
@@ -80,11 +78,13 @@ export default function AdminDashboard() {
     try {
         const items = JSON.parse(payment.items || '[]');
         planId = items[0]?.id || 'monthly';
-    } catch(e) { planId = 'monthly'; }
+    } catch(e) { 
+        planId = 'monthly'; 
+    }
 
     const duration = PLAN_DURATION_MAP[planId] || 30;
 
-    if (!confirm(`Approve ${payment.userName}'s payment for ${planId}? (Grants ${duration} days access)`)) return;
+    if (!confirm(`Approve payment of UGX ${payment.total} for ${payment.userName}? (Grants ${duration} days access)`)) return;
     
     try {
       const res = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/admin/approve-subscription`, {
@@ -170,7 +170,7 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* OVERVIEW */}
+        {/* OVERVIEW CONTENT */}
         {activeTab === 'overview' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 group hover:border-orange-500/50 transition-colors">
@@ -191,7 +191,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* SUBSCRIPTION APPROVALS */}
+        {/* SUBSCRIPTION APPROVALS CONTENT */}
         {activeTab === 'subscriptions' && (
           <div className="bg-slate-900 rounded-3xl border border-slate-800 overflow-hidden shadow-2xl">
             <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
@@ -200,132 +200,4 @@ export default function AdminDashboard() {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left">
-                <thead className="bg-slate-800/50 text-slate-400 text-xs uppercase tracking-widest">
-                  <tr>
-                    <th className="p-5">Customer Name</th>
-                    <th className="p-5">Transaction ID</th>
-                    <th className="p-5">Amount Paid</th>
-                    <th className="p-5 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800">
-                  {pendingPayments.map((p) => (
-                    <tr key={p.id} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="p-5">
-                        <p className="font-bold text-slate-200">{p.userName}</p>
-                        <p className="text-[10px] text-slate-500 font-mono">{p.userId}</p>
-                      </td>
-                      <td className="p-5">
-                        <span className="bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800 font-mono text-orange-400 text-sm">
-                          {p.transactionId}
-                        </span>
-                      </td>
-                      <td className="p-5 font-black text-green-500">UGX {p.total?.toLocaleString()}</td>
-                      <td className="p-5">
-                        <div className="flex justify-end gap-2">
-                            <button 
-                              onClick={() => handleApprove(p)}
-                              className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg text-xs font-black flex items-center gap-1 shadow-lg shadow-green-900/20"
-                            >
-                              <Check size={14} /> APPROVE
-                            </button>
-                            <button 
-                              onClick={() => handleReject(p.id)}
-                              className="bg-slate-800 hover:bg-red-600 px-4 py-2 rounded-lg text-xs font-black flex items-center gap-1"
-                            >
-                              <X size={14} /> REJECT
-                            </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {pendingPayments.length === 0 && (
-                <div className="p-20 text-center text-slate-600">
-                  <ShieldCheck size={48} className="mx-auto mb-4 opacity-10" />
-                  <p className="font-bold">No pending subscriptions to approve.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* UPLOAD CENTER */}
-        {activeTab === 'uploads' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl">
-              <div className="flex items-center gap-2 font-black mb-6 text-purple-500 border-b border-slate-800 pb-4">
-                <Music size={20} /> UPLOAD MIXES
-              </div>
-              <MusicUploadForm onSuccess={() => fetchAdminData()} />
-            </div>
-            <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl">
-              <div className="flex items-center gap-2 font-black mb-6 text-red-500 border-b border-slate-800 pb-4">
-                <Film size={20} /> UPLOAD MOVIES
-              </div>
-              <MovieUploadForm onSuccess={() => fetchAdminData()} />
-            </div>
-            <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl">
-              <div className="flex items-center gap-2 font-black mb-6 text-orange-500 border-b border-slate-800 pb-4">
-                <Download size={20} /> UPLOAD SOFTWARE
-              </div>
-              <SoftwareUploadForm onSuccess={() => fetchAdminData()} />
-            </div>
-          </div>
-        )}
-
-        {/* USER BASE */}
-        {activeTab === 'users' && (
-          <div className="bg-slate-900 rounded-3xl border border-slate-800 overflow-hidden shadow-2xl">
-             <div className="p-6 border-b border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
-              <h2 className="text-xl font-bold">Registered Members ({usersList.length})</h2>
-              <div className="relative w-full md:w-72">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
-                <input 
-                  className="w-full bg-slate-950 border border-slate-800 rounded-full pl-11 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-all" 
-                  placeholder="Search by name or email..." 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead className="bg-slate-800/50 text-slate-400 text-xs uppercase tracking-widest">
-                  <tr>
-                    <th className="p-5">User</th>
-                    <th className="p-5">Email Address</th>
-                    <th className="p-5">Current Status</th>
-                    <th className="p-5 text-right">Join Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800">
-                  {filteredUsers.map((u) => (
-                    <tr key={u.id} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="p-5 font-bold text-slate-200">{u.name}</td>
-                      <td className="p-5 text-slate-400">{u.email}</td>
-                      <td className="p-5">
-                        {u.subscription ? (
-                          <span className="bg-orange-500/10 text-orange-500 border border-orange-500/20 px-3 py-1 rounded-full text-[10px] font-black uppercase">
-                            {u.subscription.plan} PASS
-                          </span>
-                        ) : (
-                          <span className="bg-slate-800 text-slate-500 px-3 py-1 rounded-full text-[10px] font-bold uppercase">Free Tier</span>
-                        )}
-                      </td>
-                      <td className="p-5 text-right text-xs text-slate-500">
-                        {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'N/A'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {filteredUsers.length === 0 && <p className="p-20 text-center text-slate-500">No users found.</p>}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
+                <thead className="bg-
