@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { Play, Download, Search, Filter } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { projectId, publicAnonKey } from "../../../utils/supabase/info";
 
 interface Movie {
   id: string;
