@@ -5,11 +5,7 @@ interface User {
   id: string;
   email: string;
   name?: string;
-  profilePhoto?: string;
-  subscription?: {
-    plan: string;
-    expiresAt: string;
-  };
+  subscription?: { plan: string; expiresAt: string };
 }
 
 interface AuthContextType {
@@ -18,57 +14,51 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
   logout: () => void;
-  updateProfile: (data: Partial<User>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// THE EXACT URL FOR YOUR FUNCTION
-const FUNCTION_URL = `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music`;
+// THE EXACT URL FOR YOUR PROJECT
+const API_URL = `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music`;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        localStorage.removeItem('user');
-      }
+    const stored = localStorage.getItem('user');
+    if (stored) {
+      try { setUser(JSON.parse(stored)); } catch (e) { localStorage.removeItem('user'); }
     }
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await fetch(`${FUNCTION_URL}/auth/login`, {
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${publicAnonKey}`,
-          'apikey': publicAnonKey // Some Supabase setups require this to prevent CORS "Failed to fetch"
+          'apikey': publicAnonKey
         },
         body: JSON.stringify({ email, password }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Login failed' }));
-        throw new Error(errorData.error || `Server returned ${response.status}`);
+        const err = await response.json().catch(() => ({ error: 'Login Failed' }));
+        throw new Error(err.error || 'Check your credentials');
       }
 
       const data = await response.json();
       setUser(data.user);
       localStorage.setItem('user', JSON.stringify(data.user));
     } catch (error) {
-      console.error('Login error:', error);
       throw error;
     }
   };
 
   const signup = async (email: string, password: string, name: string) => {
     try {
-      const response = await fetch(`${FUNCTION_URL}/auth/signup`, {
+      const response = await fetch(`${API_URL}/auth/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -79,15 +69,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Signup failed' }));
-        throw new Error(errorData.error || 'Signup failed');
+        const err = await response.json().catch(() => ({ error: 'Signup Failed' }));
+        throw new Error(err.error || 'Account creation failed');
       }
 
       const data = await response.json();
       setUser(data.user);
       localStorage.setItem('user', JSON.stringify(data.user));
     } catch (error) {
-      console.error('Signup error:', error);
       throw error;
     }
   };
@@ -97,27 +86,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('user');
   };
 
-  const updateProfile = async (data: Partial<User>) => {
-    if (!user) return;
-    const response = await fetch(`${FUNCTION_URL}/user/update`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${publicAnonKey}`,
-        'apikey': publicAnonKey
-      },
-      body: JSON.stringify({ userId: user.id, ...data }),
-    });
-    if (!response.ok) throw new Error('Update failed');
-    const updatedUser = { ...user, ...data };
-    setUser(updatedUser);
-    localStorage.setItem('user', JSON.stringify(updatedUser));
-  };
-
   const isAdmin = user?.email === 'primerceug@gmail.com';
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin, login, signup, logout, updateProfile }}>
+    <AuthContext.Provider value={{ user, isAdmin, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   );
@@ -125,6 +97,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) throw new Error('useAuth must be used within an AuthProvider');
+  if (!context) throw new Error('useAuth must be used within AuthProvider');
   return context;
 }
