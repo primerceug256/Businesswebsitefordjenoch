@@ -18,7 +18,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// EXACT SERVER URL
+// URL for the server
 const API_URL = `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music`;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -43,12 +43,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Login Failed');
+        const text = await response.text();
+        let errorMessage = 'Login Failed';
+        try {
+          const errData = JSON.parse(text);
+          errorMessage = errData.error || errorMessage;
+        } catch (e) {
+          errorMessage = `Server Error: ${response.status}`;
+        }
+        throw new Error(errorMessage);
       }
 
+      const data = await response.json();
       setUser(data.user);
       localStorage.setItem('user', JSON.stringify(data.user));
     } catch (error) {
@@ -69,16 +76,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password, name }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Signup Failed');
+        const text = await response.text();
+        throw new Error(text || 'Signup Failed');
       }
 
+      const data = await response.json();
       setUser(data.user);
       localStorage.setItem('user', JSON.stringify(data.user));
     } catch (error) {
-      console.error('Signup error:', error);
       throw error;
     }
   };
