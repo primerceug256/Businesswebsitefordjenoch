@@ -5,7 +5,6 @@ interface User {
   id: string;
   email: string;
   name?: string;
-  subscription?: { plan: string; expiresAt: string };
 }
 
 interface AuthContextType {
@@ -17,8 +16,6 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// URL for the server
 const API_URL = `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music`;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -31,62 +28,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const login = async (email: string, password: string) => {
-    try {
-      const response = await fetch(`${API_URL}/auth/signin`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${publicAnonKey}`,
-          'apikey': publicAnonKey
-        },
-        body: JSON.stringify({ email, password }),
-      });
+  const signup = async (email: string, password: string, name: string) => {
+    const response = await fetch(`${API_URL}/auth/signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${publicAnonKey}`,
+        'apikey': publicAnonKey
+      },
+      body: JSON.stringify({ email, password, name }),
+    });
 
-      if (!response.ok) {
-        const text = await response.text();
-        let errorMessage = 'Login Failed';
-        try {
-          const errData = JSON.parse(text);
-          errorMessage = errData.error || errorMessage;
-        } catch (e) {
-          errorMessage = `Server Error: ${response.status}`;
-        }
-        throw new Error(errorMessage);
-      }
+    const data = await response.json();
 
-      const data = await response.json();
-      setUser(data.user);
-      localStorage.setItem('user', JSON.stringify(data.user));
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error;
+    if (!response.ok) {
+      // This will throw "Already have an account..." to the UI
+      throw new Error(data.error || 'Signup Failed');
     }
+
+    setUser(data.user);
+    localStorage.setItem('user', JSON.stringify(data.user));
   };
 
-  const signup = async (email: string, password: string, name: string) => {
-    try {
-      const response = await fetch(`${API_URL}/auth/signup`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${publicAnonKey}`,
-          'apikey': publicAnonKey
-        },
-        body: JSON.stringify({ email, password, name }),
-      });
+  const login = async (email: string, password: string) => {
+    const response = await fetch(`${API_URL}/auth/signin`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${publicAnonKey}`,
+        'apikey': publicAnonKey
+      },
+      body: JSON.stringify({ email, password }),
+    });
 
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || 'Signup Failed');
-      }
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Login Failed');
 
-      const data = await response.json();
-      setUser(data.user);
-      localStorage.setItem('user', JSON.stringify(data.user));
-    } catch (error) {
-      throw error;
-    }
+    setUser(data.user);
+    localStorage.setItem('user', JSON.stringify(data.user));
   };
 
   const logout = () => {
@@ -94,10 +73,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('user');
   };
 
-  const isAdmin = user?.email === 'primerceug@gmail.com';
-
   return (
-    <AuthContext.Provider value={{ user, isAdmin, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, isAdmin: user?.email === 'primerceug@gmail.com', login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   );
@@ -105,6 +82,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within AuthProvider');
+  if (!context) throw new Error('useAuth error');
   return context;
 }
