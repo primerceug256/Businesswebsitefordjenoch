@@ -1,142 +1,108 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { createContext, useContext, useEffect, useState } from "react";
 
-interface User {
+type User = {
   id: string;
   email: string;
-  name?: string;
-  profilePhoto?: string;
-  subscription?: {
-    plan: string;
-    expiresAt: string;
-  };
-}
+};
 
-interface AuthContextType {
+type AuthContextType = {
   user: User | null;
-  isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, name: string) => Promise<void>;
+  signup: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  updateProfile: (data: Partial<User>) => Promise<void>;
-}
+};
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
 
+  // ✅ FIX 1: Safe localStorage parsing
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
+    const storedUser = localStorage.getItem("user");
+
     if (storedUser) {
       try {
         setUser(JSON.parse(storedUser));
-      } catch (e) {
-        localStorage.removeItem('user');
+      } catch (err) {
+        console.error("Invalid JSON in localStorage:", storedUser);
+        localStorage.removeItem("user");
       }
     }
   }, []);
 
-  const login = async (email: string, password: string) => {
-    const url = `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/auth/login`;
+  // ✅ Helper to safely parse server response
+  const parseJSON = async (response: Response) => {
+    const text = await response.text();
 
-    const response = await fetch(url, {
+    try {
+      return JSON.parse(text);
+    } catch (err) {
+      console.error("Invalid JSON from server:", text);
+      throw new Error("Server returned invalid JSON");
+    }
+  };
+
+  // ✅ LOGIN
+  const login = async (email: string, password: string) => {
+    const response = await fetch("/api/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${publicAnonKey}`,
       },
       body: JSON.stringify({ email, password }),
     });
 
-    const rawText = await response.text();
-
-    console.log("login status:", response.status);
-    console.log("login content-type:", response.headers.get("content-type"));
-    console.log("login raw body:", rawText);
-
-    let data;
-    try {
-      data = rawText ? JSON.parse(rawText) : null;
-    } catch (e) {
-      throw new Error(`Server returned non-JSON (or invalid JSON): ${rawText}`);
-    }
+    const data = await parseJSON(response);
 
     if (!response.ok) {
-      throw new Error(data?.error || `Login failed (${response.status})`);
+      throw new Error(data?.message || "Login failed");
     }
 
     setUser(data.user);
-    localStorage.setItem('user', JSON.stringify(data.user));
+    localStorage.setItem("user", JSON.stringify(data.user));
   };
 
-  const signup = async (email: string, password: string, name: string) => {
-    const url = `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/auth/signup`;
-
-    const response = await fetch(url, {
+  // ✅ SIGNUP
+  const signup = async (email: string, password: string) => {
+    const response = await fetch("/api/signup", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${publicAnonKey}`,
       },
-      body: JSON.stringify({ email, password, name }),
+      body: JSON.stringify({ email, password }),
     });
 
-    const rawText = await response.text();
-
-    console.log("signup status:", response.status);
-    console.log("signup raw body:", rawText);
-
-    let data;
-    try {
-      data = rawText ? JSON.parse(rawText) : null;
-    } catch (e) {
-      throw new Error(`Server returned non-JSON (or invalid JSON): ${rawText}`);
-    }
+    const data = await parseJSON(response);
 
     if (!response.ok) {
-      throw new Error(data?.error || `Signup failed (${response.status})`);
+      throw new Error(data?.message || "Signup failed");
     }
 
     setUser(data.user);
-    localStorage.setItem('user', JSON.stringify(data.user));
+    localStorage.setItem("user", JSON.stringify(data.user));
   };
 
+  // ✅ LOGOUT
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('user');
-    window.location.href = '/login';
+    localStorage.removeItem("user");
   };
-
-  const updateProfile = async (data: Partial<User>) => {
-    if (!user) return;
-    const url = `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/user/update`;
-    const response = await fetch(url, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${publicAnonKey}`,
-      },
-      body: JSON.stringify({ userId: user.id, ...data }),
-    });
-
-    if (!response.ok) throw new Error('Update failed');
-    const result = await response.json();
-    setUser(result.user);
-    localStorage.setItem('user', JSON.stringify(result.user));
-  };
-
-  const isAdmin = user?.email === 'primerceug@gmail.com';
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin, login, signup, logout, updateProfile }}>
+    <AuthContext.Provider value={{ user, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   );
-}
+};
 
-export function useAuth() {
+// ✅ Hook
+export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) throw new Error('useAuth must be used within an AuthProvider');
+
+  if (!context) {
+    throw new Error("useAuth must be used inside AuthProvider");
+  }
+
   return context;
-}
+};
