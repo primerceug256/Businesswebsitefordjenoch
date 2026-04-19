@@ -32,13 +32,15 @@ export function MusicUploadForm({ onSuccess }: { onSuccess: () => void }) {
       data.append("genre", formData.genre);
       data.append("duration", formData.duration);
       data.append("releaseDate", formData.releaseDate);
+      // mediaType "audio" ensures it shows up in the public music library
       data.append("mediaType", "audio"); 
 
       const xhr = new XMLHttpRequest();
       
       xhr.upload.addEventListener("progress", (event) => {
         if (event.lengthComputable) {
-          setUploadProgress(Math.round((event.loaded / event.total) * 100));
+          const percent = Math.round((event.loaded / event.total) * 100);
+          setUploadProgress(percent);
         }
       });
 
@@ -54,17 +56,17 @@ export function MusicUploadForm({ onSuccess }: { onSuccess: () => void }) {
           }, 3000);
         } else {
           try {
-            const response = JSON.parse(xhr.responseText || "{}");
-            setError(response.error || "Upload failed on server.");
+            const resp = JSON.parse(xhr.responseText);
+            setError(resp.error || "Upload failed");
           } catch (err) {
-            setError("Server error during processing.");
+            setError("Server error during upload.");
           }
           setUploading(false);
         }
       });
 
       xhr.addEventListener("error", () => {
-        setError("Network failed. Check your connection.");
+        setError("Network failure. Check your connection.");
         setUploading(false);
       });
 
@@ -92,7 +94,7 @@ export function MusicUploadForm({ onSuccess }: { onSuccess: () => void }) {
       )}
 
       <form onSubmit={handleUpload} className="space-y-3 text-white">
-        <div className="border-2 border-dashed border-slate-700 rounded-xl p-4 text-center hover:border-purple-500 transition-colors">
+        <div className="border-2 border-dashed border-slate-700 rounded-xl p-4 text-center hover:border-purple-500 transition-colors bg-slate-900/50">
             <input 
               type="file" 
               accept="audio/*" 
@@ -104,15 +106,15 @@ export function MusicUploadForm({ onSuccess }: { onSuccess: () => void }) {
                 }
               }} 
               className="hidden" 
-              id="music-upload-input"
+              id="music-upload-field"
             />
-            <label htmlFor="music-upload-input" className="cursor-pointer">
+            <label htmlFor="music-upload-field" className="cursor-pointer">
                 {selectedFile ? (
-                    <p className="text-purple-400 font-bold truncate px-2">{selectedFile.name}</p>
+                    <p className="text-purple-400 font-bold truncate">{selectedFile.name}</p>
                 ) : (
                     <div className="flex flex-col items-center gap-2 opacity-50">
                         <Upload size={24} />
-                        <p className="text-xs uppercase font-black tracking-tighter">Click to select MP3</p>
+                        <p className="text-[10px] uppercase font-black">Select MP3 File</p>
                     </div>
                 )}
             </label>
@@ -130,7 +132,7 @@ export function MusicUploadForm({ onSuccess }: { onSuccess: () => void }) {
         <button
           type="submit"
           disabled={uploading || !selectedFile}
-          className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-slate-800 text-white font-black py-3 rounded-lg transition-all text-sm uppercase tracking-tighter flex items-center justify-center gap-2"
+          className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-slate-800 disabled:text-slate-500 text-white font-black py-3 rounded-lg transition-all text-sm uppercase flex items-center justify-center gap-2"
         >
           {uploading ? (
             <>
@@ -138,7 +140,7 @@ export function MusicUploadForm({ onSuccess }: { onSuccess: () => void }) {
               {uploadProgress}%
             </>
           ) : (
-            "Upload Mix"
+            "Upload to Library"
           )}
         </button>
       </form>
