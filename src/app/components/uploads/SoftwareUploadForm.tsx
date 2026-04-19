@@ -21,7 +21,7 @@ export function SoftwareUploadForm({ onSuccess }: { onSuccess: () => void }) {
     description: "",
     version: "1.0",
     platform: "Windows",
-    category: "DJ Software",
+    category: "Software",
     price: "15000",
   });
   const [uploading, setUploading] = useState(false);
