@@ -5,7 +5,9 @@ import {
   Upload, Users, DollarSign, Music, Film, 
   Download, Check, X, ShieldCheck, Search, Clock
 } from 'lucide-react';
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { projectId, publicAnonKey }
+ from 
+"../../../utils/supabase/info";
 
 // Import upload forms
 import { MusicUploadForm } from '../components/uploads/MusicUploadForm';
