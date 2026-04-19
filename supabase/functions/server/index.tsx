@@ -1,11 +1,9 @@
 import { Hono } from "npm:hono";
 import { cors } from "npm:hono/cors";
 
-// Initialize the Hono app
-const app = new Hono();
+const app = new Hono().basePath("/make-98d801c7-music");
 
-// 1. COMPREHENSIVE CORS FIX
-// This allows your website to talk to this server without "Failed to fetch"
+// 1. CORS FIX - Allows your phone/browser to talk to the server
 app.use(
   "*",
   cors({
@@ -17,19 +15,14 @@ app.use(
   })
 );
 
-// Handle preflight requests
 app.options("*", (c) => c.text("", 204));
 
-// ==========================================
-// DATABASE LOGIC (Imported from your files)
-// ==========================================
+// Import logic from your other files
 import * as auth from "./auth.tsx";
 import * as music from "./music.tsx";
-import * as movies from "./movies.tsx";
-import * as software from "./software.tsx";
 
 // ==========================================
-// AUTH ROUTES
+// AUTH ROUTES (Using /signin to match your error)
 // ==========================================
 
 app.post("/auth/signup", async (c) => {
@@ -43,7 +36,7 @@ app.post("/auth/signup", async (c) => {
   }
 });
 
-app.post("/auth/login", async (c) => {
+app.post("/auth/signin", async (c) => {
   try {
     const { email, password } = await c.req.json();
     const user = await auth.login(email, password);
@@ -67,25 +60,6 @@ app.get("/music/tracks", async (c) => {
   }
 });
 
-app.get("/movies/list", async (c) => {
-  try {
-    const moviesList = await movies.getAllMovies();
-    return c.json({ movies: moviesList });
-  } catch (error) {
-    return c.json({ error: "Failed to load movies" }, 500);
-  }
-});
-
-app.get("/software/list", async (c) => {
-  try {
-    const softwareList = await software.getAllSoftware();
-    return c.json({ software: softwareList });
-  } catch (error) {
-    return c.json({ error: "Failed to load software" }, 500);
-  }
-});
-
-// Health check
 app.get("/", (c) => c.json({ status: "DJ Enoch Server Running" }));
 
 Deno.serve(app.fetch);
