@@ -1,7 +1,12 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
 
-interface User { id: string; email: string; name?: string; }
+interface User {
+  id: string;
+  email: string;
+  name?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   isAdmin: boolean;
@@ -18,30 +23,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const stored = localStorage.getItem('user');
-    if (stored) { try { setUser(JSON.parse(stored)); } catch (e) { } }
+    if (stored) {
+      try { setUser(JSON.parse(stored)); } catch (e) { localStorage.removeItem('user'); }
+    }
   }, []);
 
-  const signup = async (email: string, password: string, name: string) => {
-    const response = await fetch(`${API_URL}/auth/signup`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${publicAnonKey}`,
-        'apikey': publicAnonKey
-      },
-      body: JSON.stringify({ email, password, name }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      // This is what throws the "VERSION 2" error to your screen
-      throw new Error(data.error || 'Signup failed');
-    }
-
-    setUser(data.user);
-    localStorage.setItem('user', JSON.stringify(data.user));
-  };
+  // AUTOMATIC ADMIN DETECTION
+  const isAdmin = user?.email?.toLowerCase() === 'primerceug@gmail.com';
 
   const login = async (email: string, password: string) => {
     const response = await fetch(`${API_URL}/auth/signin`, {
@@ -55,15 +43,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Login failed');
+    if (!response.ok) throw new Error(data.error || 'Login Failed');
+
     setUser(data.user);
     localStorage.setItem('user', JSON.stringify(data.user));
   };
 
-  const logout = () => { setUser(null); localStorage.removeItem('user'); };
+  const signup = async (email: string, password: string, name: string) => {
+    const response = await fetch(`${API_URL}/auth/signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${publicAnonKey}`,
+        'apikey': publicAnonKey
+      },
+      body: JSON.stringify({ email, password, name }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Signup Failed');
+
+    setUser(data.user);
+    localStorage.setItem('user', JSON.stringify(data.user));
+  };
+
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem('user');
+  };
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin: user?.email === 'primerceug@gmail.com', login, signup, logout }}>
+    <AuthContext.Provider value={{ user, isAdmin, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   );
