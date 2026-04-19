@@ -7,7 +7,7 @@ import { Footer } from './Footer';
 
 export default function Layout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
   const { items } = useCart();
   const navigate = useNavigate();
 
@@ -72,6 +72,16 @@ export default function Layout() {
               {/* Auth Actions */}
               {user ? (
                 <div className="flex items-center gap-2">
+                  {isAdmin && (
+                    <Link
+                      to="/admin"
+                      className="flex items-center gap-2 bg-yellow-500 text-black px-3 py-2 rounded-lg hover:bg-yellow-400 transition-colors font-semibold"
+                      title="Admin Dashboard"
+                    >
+                      <Settings size={20} />
+                      <span className="hidden lg:inline text-sm">Admin</span>
+                    </Link>
+                  )}
                   <Link
                     to="/profile"
                     className="flex items-center gap-2 bg-white/10 px-3 py-2 rounded-lg hover:bg-white/20 transition-colors"
