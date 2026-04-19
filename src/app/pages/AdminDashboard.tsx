@@ -9,7 +9,7 @@ const SUPABASE_URL = "https://nlhpnvzpbceolsbozrjw.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_4k8plBPAQLHH8gF7k8_Zcg__t6-qvz3";
 
 export default function AdminDashboard() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, loading } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'overview' | 'upload' | 'manage' | 'payments'>('overview');
   const [stats, setStats] = useState({ users: 0, movies: 0, music: 0, revenue: 0 });
@@ -41,13 +41,16 @@ export default function AdminDashboard() {
   const VJ_LIST = ['VJ Junior', 'VJ Jingo', 'VJ Emmy', 'VJ Kevo', 'VJ Ulio', 'VJ Shield', 'VJ Soul', 'VJ Banks', 'VJ Sammy', 'VJ HD', 'VJ Heavy Q', 'VJ Mark', 'VJ Ice P', 'VJ Kin', 'VJ Ham', 'VJ Mumba', 'VJ Nelly', 'VJ Zaid', 'VJ Kriss', 'VJ MK', 'VJ Uncle T', 'VJ Waza'];
 
   useEffect(() => {
+    // Wait for auth to finish loading before checking admin status
+    if (loading) return;
+    
     if (!user || !isAdmin) {
       navigate('/');
       return;
     }
     fetchStats();
     fetchPendingPayments();
-  }, [user, isAdmin, navigate]);
+  }, [user, isAdmin, loading, navigate]);
 
   const fetchStats = async () => {
     // Fetch admin stats
@@ -218,6 +221,15 @@ export default function AdminDashboard() {
       setUploadProgress(0);
     }
   };
+
+  // Show loading while auth is being checked
+  if (loading) {
+    return (
+      <div className="bg-black text-white min-h-screen flex items-center justify-center">
+        <div className="text-xl">Loading...</div>
+      </div>
+    );
+  }
 
   if (!isAdmin) return null;
 
