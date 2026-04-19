@@ -1,17 +1,11 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
 
-interface User {
-  id: string;
-  email: string;
-  name?: string;
-}
-
+interface User { id: string; email: string; name?: string; }
 interface AuthContextType {
   user: User | null;
   isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, name: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -23,57 +17,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const stored = localStorage.getItem('user');
-    if (stored) {
-      try { setUser(JSON.parse(stored)); } catch (e) { localStorage.removeItem('user'); }
-    }
+    if (stored) { try { setUser(JSON.parse(stored)); } catch (e) { } }
   }, []);
 
-  // AUTOMATIC ADMIN DETECTION
+  // FORCE ADMIN DETECTION FOR YOUR EMAIL
   const isAdmin = user?.email?.toLowerCase() === 'primerceug@gmail.com';
 
   const login = async (email: string, password: string) => {
     const response = await fetch(`${API_URL}/auth/signin`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${publicAnonKey}`,
-        'apikey': publicAnonKey
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${publicAnonKey}`, 'apikey': publicAnonKey },
       body: JSON.stringify({ email, password }),
     });
-
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Login Failed');
-
     setUser(data.user);
     localStorage.setItem('user', JSON.stringify(data.user));
   };
 
-  const signup = async (email: string, password: string, name: string) => {
-    const response = await fetch(`${API_URL}/auth/signup`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${publicAnonKey}`,
-        'apikey': publicAnonKey
-      },
-      body: JSON.stringify({ email, password, name }),
-    });
-
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Signup Failed');
-
-    setUser(data.user);
-    localStorage.setItem('user', JSON.stringify(data.user));
-  };
-
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
-  };
+  const logout = () => { setUser(null); localStorage.removeItem('user'); };
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, isAdmin, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
