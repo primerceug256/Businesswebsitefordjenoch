@@ -18,7 +18,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// FULL PATH TO YOUR SERVER
+// EXACT SERVER URL
 const API_URL = `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music`;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const errData = JSON.parse(text);
           errorMessage = errData.error || errorMessage;
         } catch (e) {
-          errorMessage = `Server Error: ${response.status}`;
+          errorMessage = `Error ${response.status}: Server is unavailable`;
         }
         throw new Error(errorMessage);
       }
@@ -59,7 +59,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.user);
       localStorage.setItem('user', JSON.stringify(data.user));
     } catch (error) {
-      console.error('Login error:', error);
       throw error;
     }
   };
@@ -85,7 +84,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.user);
       localStorage.setItem('user', JSON.stringify(data.user));
     } catch (error) {
-      console.error('Signup error:', error);
       throw error;
     }
   };
