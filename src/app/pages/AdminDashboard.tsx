@@ -1,89 +1,52 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router';
-import { Upload, Music, Film, Download } from 'lucide-react';
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { Users, DollarSign, Music, Film } from 'lucide-react';
 
 export default function AdminDashboard() {
-  const { user, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
   const navigate = useNavigate();
-  const [uploadType, setUploadType] = useState<'music' | 'movies' | 'software'>('music');
-  const [file, setFile] = useState<File | null>(null);
-  const [title, setTitle] = useState('');
-  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
-    if (!user || !isAdmin) navigate('/');
-  }, [user, isAdmin, navigate]);
-
-  const handleUpload = async () => {
-    if (!file || !title) {
-      alert('Please select a file and enter a title');
-      return;
+    // If someone tries to go to /admin and it's NOT you, kick them out
+    if (!isAdmin) {
+      navigate('/');
     }
-
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('title', title);
-
-      const endpoint = uploadType === 'music' ? 'music/upload' : uploadType === 'movies' ? 'movies/upload' : 'software/upload';
-      
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/${endpoint}`,
-        {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${publicAnonKey}` },
-          body: formData,
-        }
-      );
-
-      if (!response.ok) throw new Error('Upload failed');
-      alert('Uploaded successfully!');
-      setTitle('');
-      setFile(null);
-    } catch (error) {
-      alert('Upload failed. Check your connection.');
-    } finally {
-      setUploading(false);
-    }
-  };
+  }, [isAdmin, navigate]);
 
   if (!isAdmin) return null;
 
   return (
-    <div className="bg-black text-white min-h-screen py-16">
-      <div className="container mx-auto px-4 max-w-2xl">
-        <h1 className="text-4xl font-bold mb-8 text-center">Admin Upload Center</h1>
-        <div className="bg-gray-900 p-8 rounded-2xl space-y-6">
-          <div className="flex gap-4">
-            <button onClick={() => setUploadType('music')} className={`flex-1 py-2 rounded ${uploadType === 'music' ? 'bg-orange-600' : 'bg-gray-800'}`}>Music</button>
-            <button onClick={() => setUploadType('movies')} className={`flex-1 py-2 rounded ${uploadType === 'movies' ? 'bg-orange-600' : 'bg-gray-800'}`}>Movie</button>
-            <button onClick={() => setUploadType('software')} className={`flex-1 py-2 rounded ${uploadType === 'software' ? 'bg-orange-600' : 'bg-gray-800'}`}>Software</button>
+    <div className="bg-black text-white min-h-screen py-12">
+      <div className="container mx-auto px-4">
+        <h1 className="text-5xl font-black mb-12 text-yellow-400">ADMIN CONTROL CENTER</h1>
+        
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+          <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800">
+            <Users className="text-orange-500 mb-2" />
+            <p className="text-4xl font-black">125</p>
+            <p className="text-gray-400">Total Members</p>
           </div>
+          <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800">
+            <DollarSign className="text-green-500 mb-2" />
+            <p className="text-4xl font-black">1.5M</p>
+            <p className="text-gray-400">UGX Revenue</p>
+          </div>
+          <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800">
+            <Music className="text-purple-500 mb-2" />
+            <p className="text-4xl font-black">320</p>
+            <p className="text-gray-400">Mixes Uploaded</p>
+          </div>
+          <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800">
+            <Film className="text-red-500 mb-2" />
+            <p className="text-4xl font-black">450</p>
+            <p className="text-gray-400">Movies Online</p>
+          </div>
+        </div>
 
-          <input
-            type="text"
-            placeholder="Title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full bg-gray-800 p-3 rounded"
-          />
-
-          <input
-            type="file"
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
-            className="w-full bg-gray-800 p-3 rounded"
-          />
-
-          <button
-            onClick={handleUpload}
-            disabled={uploading}
-            className="w-full bg-orange-600 py-4 rounded font-bold hover:bg-orange-700 disabled:opacity-50"
-          >
-            {uploading ? 'Uploading...' : 'Start Upload'}
-          </button>
+        <div className="bg-gray-900 p-8 rounded-3xl border-2 border-yellow-400/20">
+          <h2 className="text-2xl font-bold mb-4">Quick Instructions</h2>
+          <p className="text-gray-300">Welcome back, DJ Enoch. To upload new content, use the floating buttons at the bottom right of the screen. To manage users or check payments, use the tools above.</p>
         </div>
       </div>
     </div>
