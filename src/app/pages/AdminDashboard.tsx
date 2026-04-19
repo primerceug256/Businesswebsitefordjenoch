@@ -3,11 +3,11 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router';
 import { 
   Upload, Users, DollarSign, Music, Film, 
-  Download, Check, X, ShieldCheck, Search, Trash2, Clock
+  Download, Check, X, ShieldCheck, Search, Clock
 } from 'lucide-react';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
 
-// Import your custom forms
+// Import upload forms
 import { MusicUploadForm } from '../components/uploads/MusicUploadForm';
 import { MovieUploadForm } from '../components/uploads/MovieUploadForm';
 import { SoftwareUploadForm } from '../components/uploads/SoftwareUploadForm';
@@ -29,7 +29,7 @@ const PLAN_DURATION_MAP: Record<string, number> = {
 };
 
 export default function AdminDashboard() {
-  const { user, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
   const navigate = useNavigate();
   
   // Tab Management
@@ -47,7 +47,7 @@ export default function AdminDashboard() {
       return;
     }
     fetchAdminData();
-  }, [isAdmin]);
+  }, [isAdmin, navigate]);
 
   const fetchAdminData = async () => {
     setLoading(true);
@@ -59,7 +59,7 @@ export default function AdminDashboard() {
       const uData = await uRes.json();
       setUsersList(uData.users || []);
 
-      // 2. Fetch Pending Payments/Subscriptions
+      // 2. Fetch Pending Payments
       const pRes = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/payments/pending`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` }
       });
@@ -74,10 +74,12 @@ export default function AdminDashboard() {
   };
 
   const handleApprove = async (payment: any) => {
-    // Try to detect the plan from the items string
-    const items = JSON.parse(payment.items || '[]');
-    const firstItem = items[0];
-    const planId = firstItem?.id || 'monthly';
+    let planId = 'monthly';
+    try {
+        const items = JSON.parse(payment.items || '[]');
+        planId = items[0]?.id || 'monthly';
+    } catch(e) { planId = 'monthly'; }
+
     const duration = PLAN_DURATION_MAP[planId] || 30;
 
     if (!confirm(`Approve ${payment.userName}'s payment for ${planId}? (Grants ${duration} days access)`)) return;
@@ -119,7 +121,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // Filter users based on search
   const filteredUsers = usersList.filter(u => 
     u.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
     u.email?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -137,7 +138,7 @@ export default function AdminDashboard() {
             <p className="text-xs text-slate-500 uppercase font-bold">Mukono, Uganda Branch</p>
           </div>
           <button onClick={fetchAdminData} className="px-4 py-2 bg-orange-600/10 text-orange-500 border border-orange-500/20 rounded-lg text-sm font-bold hover:bg-orange-600 hover:text-white transition-all">
-            Refresh Dashboard
+            {loading ? 'Refreshing...' : 'Refresh Dashboard'}
           </button>
         </div>
       </div>
@@ -167,7 +168,7 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Tab Content: OVERVIEW (STATS) */}
+        {/* OVERVIEW */}
         {activeTab === 'overview' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 group hover:border-orange-500/50 transition-colors">
@@ -188,12 +189,12 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Tab Content: SUBSCRIPTION APPROVALS (The "Approved" Page) */}
+        {/* SUBSCRIPTION APPROVALS */}
         {activeTab === 'subscriptions' && (
           <div className="bg-slate-900 rounded-3xl border border-slate-800 overflow-hidden shadow-2xl">
             <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
-              <h2 className="text-xl font-bold flex items-center gap-2"><Clock className="text-orange-500" /> Pending Airtel Money Verification</h2>
-              <span className="text-xs font-bold text-slate-500">Check your phone for matching Transaction IDs</span>
+              <h2 className="text-xl font-bold flex items-center gap-2"><Clock className="text-orange-500" /> Pending Verification</h2>
+              <span className="text-xs font-bold text-slate-500">Cross-check Transaction IDs with your phone</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left">
@@ -202,7 +203,7 @@ export default function AdminDashboard() {
                     <th className="p-5">Customer Name</th>
                     <th className="p-5">Transaction ID</th>
                     <th className="p-5">Amount Paid</th>
-                    <th className="p-5">Actions</th>
+                    <th className="p-5 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
@@ -218,3 +219,111 @@ export default function AdminDashboard() {
                         </span>
                       </td>
                       <td className="p-5 font-black text-green-500">UGX {p.total?.toLocaleString()}</td>
+                      <td className="p-5">
+                        <div className="flex justify-end gap-2">
+                            <button 
+                              onClick={() => handleApprove(p)}
+                              className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg text-xs font-black flex items-center gap-1 shadow-lg shadow-green-900/20"
+                            >
+                              <Check size={14} /> APPROVE
+                            </button>
+                            <button 
+                              onClick={() => handleReject(p.id)}
+                              className="bg-slate-800 hover:bg-red-600 px-4 py-2 rounded-lg text-xs font-black flex items-center gap-1"
+                            >
+                              <X size={14} /> REJECT
+                            </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {pendingPayments.length === 0 && (
+                <div className="p-20 text-center text-slate-600">
+                  <ShieldCheck size={48} className="mx-auto mb-4 opacity-10" />
+                  <p className="font-bold">No pending subscriptions to approve.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* UPLOAD CENTER */}
+        {activeTab === 'uploads' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl">
+              <div className="flex items-center gap-2 font-black mb-6 text-purple-500 border-b border-slate-800 pb-4">
+                <Music size={20} /> UPLOAD MIXES
+              </div>
+              <MusicUploadForm onSuccess={() => fetchAdminData()} />
+            </div>
+            <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl">
+              <div className="flex items-center gap-2 font-black mb-6 text-red-500 border-b border-slate-800 pb-4">
+                <Film size={20} /> UPLOAD MOVIES
+              </div>
+              <MovieUploadForm onSuccess={() => fetchAdminData()} />
+            </div>
+            <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl">
+              <div className="flex items-center gap-2 font-black mb-6 text-orange-500 border-b border-slate-800 pb-4">
+                <Download size={20} /> UPLOAD SOFTWARE
+              </div>
+              <SoftwareUploadForm onSuccess={() => fetchAdminData()} />
+            </div>
+          </div>
+        )}
+
+        {/* USER BASE */}
+        {activeTab === 'users' && (
+          <div className="bg-slate-900 rounded-3xl border border-slate-800 overflow-hidden shadow-2xl">
+             <div className="p-6 border-b border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
+              <h2 className="text-xl font-bold">Registered Members ({usersList.length})</h2>
+              <div className="relative w-full md:w-72">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                <input 
+                  className="w-full bg-slate-950 border border-slate-800 rounded-full pl-11 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-all" 
+                  placeholder="Search by name or email..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-slate-800/50 text-slate-400 text-xs uppercase tracking-widest">
+                  <tr>
+                    <th className="p-5">User</th>
+                    <th className="p-5">Email Address</th>
+                    <th className="p-5">Current Status</th>
+                    <th className="p-5 text-right">Join Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800">
+                  {filteredUsers.map((u) => (
+                    <tr key={u.id} className="hover:bg-slate-800/30 transition-colors">
+                      <td className="p-5 font-bold text-slate-200">{u.name}</td>
+                      <td className="p-5 text-slate-400">{u.email}</td>
+                      <td className="p-5">
+                        {u.subscription ? (
+                          <span className="bg-orange-500/10 text-orange-500 border border-orange-500/20 px-3 py-1 rounded-full text-[10px] font-black uppercase">
+                            {u.subscription.plan} PASS
+                          </span>
+                        ) : (
+                          <span className="bg-slate-800 text-slate-500 px-3 py-1 rounded-full text-[10px] font-bold uppercase">Free Tier</span>
+                        )}
+                      </td>
+                      <td className="p-5 text-right text-xs text-slate-500">
+                        {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'N/A'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {filteredUsers.length === 0 && <p className="p-20 text-center text-slate-500">No users found.</p>}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
