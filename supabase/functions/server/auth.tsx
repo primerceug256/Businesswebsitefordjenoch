@@ -17,17 +17,16 @@ function hashPassword(password: string): string {
 export async function signup(email: string, password: string, name: string): Promise<User> {
   const cleanEmail = email.toLowerCase().trim();
   
-  // 1. Check if the email exists in the database
+  // 1. CHECK IF EMAIL ALREADY EXISTS
   const existingUserId = await kv.get(`user:email:${cleanEmail}`);
-  
   if (existingUserId) {
-    // We add "VERSION 2" so you can see if the code is actually updated
-    throw new Error('VERSION 2: You already have an account with this email. Please Login instead.');
+    throw new Error('Email is already registered. Please try logging in instead.');
   }
 
+  // 2. CREATE NEW USER
   const userId = `user-${Date.now()}`;
   const now = new Date();
-  const expires = new Date(now.getTime() + 6 * 60 * 60 * 1000); 
+  const expires = new Date(now.getTime() + 6 * 60 * 60 * 1000); // 6 hours free
 
   const user: User = {
     id: userId,
@@ -41,7 +40,7 @@ export async function signup(email: string, password: string, name: string): Pro
     createdAt: now.toISOString(),
   };
 
-  // Save the user and the email reference
+  // Save user data and email lookup
   await kv.set(`user:${userId}`, user);
   await kv.set(`user:email:${cleanEmail}`, userId);
 
@@ -53,7 +52,7 @@ export async function login(email: string, password: string): Promise<User> {
   const userId = await kv.get(`user:email:${cleanEmail}`);
   
   if (!userId) {
-    throw new Error('Account not found. Please Sign Up first.');
+    throw new Error('No account found with this email.');
   }
 
   const user = await kv.get(`user:${userId}`) as User;
