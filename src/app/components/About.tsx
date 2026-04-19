@@ -56,7 +56,7 @@ export function About() {
             className="space-y-6"
           >
             <h3 className="text-3xl font-bold text-gray-900 mb-6">
-              Professional DJ Services & Products
+              Professional DJ Services,Music,Movies& Products
             </h3>
             <p className="text-lg text-gray-700 leading-relaxed">
               With over <span className="text-orange-600 font-semibold">1 year of experience</span>, DJ Enoch Pro provides professional DJ services and high-quality digital products across Uganda.
