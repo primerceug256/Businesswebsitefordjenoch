@@ -15,6 +15,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import MoviePlayer from "./pages/MoviePlayer";
 import LearnMore from "./pages/LearnMore";
 import NotFound from "./pages/NotFound";
+import MyLibrary from "./pages/MyLibrary"; // Added this import
 
 export const router = createBrowserRouter([
   {
@@ -24,7 +25,7 @@ export const router = createBrowserRouter([
       { index: true, Component: Home },
       { path: "services", Component: Services },
       { path: "music", Component: Music },
-      { path: "my-library", Component: MyLibrary },
+      { path: "my-library", Component: MyLibrary }, // Path registered here
       { path: "movies", Component: Movies },
       { path: "movies/watch/:id", Component: MoviePlayer },
       { path: "software", Component: Software },
