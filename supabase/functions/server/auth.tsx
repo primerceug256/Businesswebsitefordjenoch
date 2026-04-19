@@ -6,10 +6,7 @@ export interface User {
   email: string;
   passwordHash: string;
   name: string;
-  subscription?: {
-    plan: string;
-    expiresAt: string;
-  };
+  subscription?: { plan: string; expiresAt: string };
   createdAt: string;
 }
 
@@ -18,22 +15,23 @@ function hashPassword(password: string): string {
 }
 
 export async function signup(email: string, password: string, name: string): Promise<User> {
-  // 1. CHECK IF EMAIL EXISTS
-  const existingUserId = await kv.get(`user:email:${email.toLowerCase()}`);
+  const cleanEmail = email.toLowerCase().trim();
+  
+  // 1. Check if the email exists in the database
+  const existingUserId = await kv.get(`user:email:${cleanEmail}`);
   
   if (existingUserId) {
-    // This exact message will be sent to the frontend
-    throw new Error('Already have an account with this email. Please login.');
+    // We add "VERSION 2" so you can see if the code is actually updated
+    throw new Error('VERSION 2: You already have an account with this email. Please Login instead.');
   }
 
-  // 2. CREATE NEW USER
   const userId = `user-${Date.now()}`;
   const now = new Date();
-  const expires = new Date(now.getTime() + 6 * 60 * 60 * 1000); // 6 hours free
+  const expires = new Date(now.getTime() + 6 * 60 * 60 * 1000); 
 
   const user: User = {
     id: userId,
-    email: email.toLowerCase(),
+    email: cleanEmail,
     passwordHash: hashPassword(password),
     name,
     subscription: {
@@ -43,17 +41,19 @@ export async function signup(email: string, password: string, name: string): Pro
     createdAt: now.toISOString(),
   };
 
-  // Save the user data and the email-to-id mapping
+  // Save the user and the email reference
   await kv.set(`user:${userId}`, user);
-  await kv.set(`user:email:${email.toLowerCase()}`, userId);
+  await kv.set(`user:email:${cleanEmail}`, userId);
 
   return user;
 }
 
 export async function login(email: string, password: string): Promise<User> {
-  const userId = await kv.get(`user:email:${email.toLowerCase()}`);
+  const cleanEmail = email.toLowerCase().trim();
+  const userId = await kv.get(`user:email:${cleanEmail}`);
+  
   if (!userId) {
-    throw new Error('No account found with this email.');
+    throw new Error('Account not found. Please Sign Up first.');
   }
 
   const user = await kv.get(`user:${userId}`) as User;
