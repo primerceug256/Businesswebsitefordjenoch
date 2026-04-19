@@ -1,12 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
 
-interface User {
-  id: string;
-  email: string;
-  name?: string;
-}
-
+interface User { id: string; email: string; name?: string; }
 interface AuthContextType {
   user: User | null;
   isAdmin: boolean;
@@ -23,9 +18,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const stored = localStorage.getItem('user');
-    if (stored) {
-      try { setUser(JSON.parse(stored)); } catch (e) { localStorage.removeItem('user'); }
-    }
+    if (stored) { try { setUser(JSON.parse(stored)); } catch (e) { } }
   }, []);
 
   const signup = async (email: string, password: string, name: string) => {
@@ -42,8 +35,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const data = await response.json();
 
     if (!response.ok) {
-      // This will throw "Already have an account..." to the UI
-      throw new Error(data.error || 'Signup Failed');
+      // This is what throws the "VERSION 2" error to your screen
+      throw new Error(data.error || 'Signup failed');
     }
 
     setUser(data.user);
@@ -62,16 +55,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Login Failed');
-
+    if (!response.ok) throw new Error(data.error || 'Login failed');
     setUser(data.user);
     localStorage.setItem('user', JSON.stringify(data.user));
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
-  };
+  const logout = () => { setUser(null); localStorage.removeItem('user'); };
 
   return (
     <AuthContext.Provider value={{ user, isAdmin: user?.email === 'primerceug@gmail.com', login, signup, logout }}>
