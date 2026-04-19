@@ -1,10 +1,11 @@
-// ... around line 75
-                  <button
-                    onClick={handleLogout}
-                    className="flex items-center gap-2 bg-white/10 px-3 py-2 rounded-lg hover:bg-white/20 transition-colors"
-                    title="Logout"
-                  >
-                    <LogOut size={20} />
-                    <span className="hidden lg:inline text-sm">Logout</span>
-                  </button>
-// ...
+// src/app/components/Layout.tsx
+
+import { Outlet, Link, useNavigate } from 'react-router';
+import { ShoppingCart, User, LogOut, Home, Music, Film, Download, Phone, CreditCard } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
+
+// Ensure "export default" is right here!
+export default function Layout() {
+  const { user, isAdmin, logout } = useAuth();
+  // ... the rest of your layout code
