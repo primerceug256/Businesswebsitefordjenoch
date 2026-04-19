@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Upload, Film, Loader, CheckCircle } from "lucide-react";
 // Change this line:
-import { projectId, publicAnonKey } from "../../../../utils/supabase/info";
+import { projectId, publicAnonKey } 
+from
+ "../../../../utils/supabase/info";
 import { projectId, publicAnonKey } from "../../../utils/supabase/info";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024; // 5GB in bytes
