@@ -305,6 +305,9 @@ export default function AdminDashboard() {
                       className="w-full bg-gray-800 px-4 py-3 rounded-lg"
                     >
                       <option>Action</option>
+                      <option>Adventure</option>
+                      <option>erotic</option>
+                      <option>Adult</option>
                       <option>Comedy</option>
                       <option>Drama</option>
                       <option>Horror</option>
