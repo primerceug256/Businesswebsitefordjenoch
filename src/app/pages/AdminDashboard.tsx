@@ -248,7 +248,11 @@ export default function AdminDashboard() {
                     className="w-full bg-gray-800 px-4 py-3 rounded-lg"
                   >
                     <option value="audio">Audio</option>
+                    <option 
+value="audio">Non-stop</option>
                     <option value="video">Video</option>
+                    <option 
+value="video">Non-stop</option>
                   </select>
                 </div>
                 <div>
