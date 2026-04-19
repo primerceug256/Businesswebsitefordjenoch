@@ -24,6 +24,7 @@ export const router = createBrowserRouter([
       { index: true, Component: Home },
       { path: "services", Component: Services },
       { path: "music", Component: Music },
+      { path: "my-library", Component: MyLibrary },
       { path: "movies", Component: Movies },
       { path: "movies/watch/:id", Component: MoviePlayer },
       { path: "software", Component: Software },
