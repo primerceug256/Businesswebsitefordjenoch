@@ -18,7 +18,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// THE EXACT URL FOR YOUR PROJECT
+// FULL PATH TO YOUR SERVER
 const API_URL = `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music`;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -44,14 +44,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: 'Login Failed' }));
-        throw new Error(err.error || 'Check your credentials');
+        const text = await response.text();
+        let errorMessage = 'Login Failed';
+        try {
+          const errData = JSON.parse(text);
+          errorMessage = errData.error || errorMessage;
+        } catch (e) {
+          errorMessage = `Server Error: ${response.status}`;
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
       setUser(data.user);
       localStorage.setItem('user', JSON.stringify(data.user));
     } catch (error) {
+      console.error('Login error:', error);
       throw error;
     }
   };
@@ -69,14 +77,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: 'Signup Failed' }));
-        throw new Error(err.error || 'Account creation failed');
+        const text = await response.text();
+        throw new Error(text || 'Signup Failed');
       }
 
       const data = await response.json();
       setUser(data.user);
       localStorage.setItem('user', JSON.stringify(data.user));
     } catch (error) {
+      console.error('Signup error:', error);
       throw error;
     }
   };
