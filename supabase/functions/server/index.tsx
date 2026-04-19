@@ -1,9 +1,9 @@
 import { Hono } from "npm:hono";
 import { cors } from "npm:hono/cors";
 
-const app = new Hono().basePath("/make-98d801c7-music");
+const app = new Hono();
 
-// 1. CORS FIX - Allows your phone/browser to talk to the server
+// 1. CORS FIX - Allows your website to talk to the server
 app.use(
   "*",
   cors({
@@ -15,6 +15,7 @@ app.use(
   })
 );
 
+// Handle preflight
 app.options("*", (c) => c.text("", 204));
 
 // Import logic from your other files
@@ -22,7 +23,7 @@ import * as auth from "./auth.tsx";
 import * as music from "./music.tsx";
 
 // ==========================================
-// AUTH ROUTES (Using /signin to match your error)
+// AUTH ROUTES
 // ==========================================
 
 app.post("/auth/signup", async (c) => {
@@ -48,7 +49,7 @@ app.post("/auth/signin", async (c) => {
 });
 
 // ==========================================
-// CONTENT ROUTES
+// MUSIC ROUTES
 // ==========================================
 
 app.get("/music/tracks", async (c) => {
