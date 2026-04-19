@@ -23,8 +23,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// FIXED FUNCTION NAME
-const BASE_URL = `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music`;
+// FULL PATH TO THE NEW SERVER
+const API_BASE = `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music`;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -41,51 +41,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    const response = await fetch(`${BASE_URL}/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${publicAnonKey}`,
-      },
-      body: JSON.stringify({ email, password }),
-    });
-
-    const responseText = await response.text();
-    let data;
     try {
-      data = JSON.parse(responseText);
-    } catch (e) {
-      throw new Error(`Server Error: ${response.status}. The Edge Function may not be deployed.`);
+      const response = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${publicAnonKey}`,
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        throw new Error(`Server Error (${response.status}): The function might not be deployed yet.`);
+      }
+
+      if (!response.ok) throw new Error(data.error || 'Login failed');
+
+      setUser(data.user);
+      localStorage.setItem('user', JSON.stringify(data.user));
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
     }
-
-    if (!response.ok) throw new Error(data.error || 'Login failed');
-
-    setUser(data.user);
-    localStorage.setItem('user', JSON.stringify(data.user));
   };
 
   const signup = async (email: string, password: string, name: string) => {
-    const response = await fetch(`${BASE_URL}/auth/signup`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${publicAnonKey}`,
-      },
-      body: JSON.stringify({ email, password, name }),
-    });
-
-    const responseText = await response.text();
-    let data;
     try {
-      data = JSON.parse(responseText);
-    } catch (e) {
-      throw new Error(`Server Error: ${response.status}`);
+      const response = await fetch(`${API_BASE}/auth/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${publicAnonKey}`,
+        },
+        body: JSON.stringify({ email, password, name }),
+      });
+
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        throw new Error(`Server Error (${response.status})`);
+      }
+
+      if (!response.ok) throw new Error(data.error || 'Signup failed');
+
+      setUser(data.user);
+      localStorage.setItem('user', JSON.stringify(data.user));
+    } catch (error) {
+      console.error('Signup error:', error);
+      throw error;
     }
-
-    if (!response.ok) throw new Error(data.error || 'Signup failed');
-
-    setUser(data.user);
-    localStorage.setItem('user', JSON.stringify(data.user));
   };
 
   const logout = () => {
@@ -95,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateProfile = async (data: Partial<User>) => {
     if (!user) return;
-    const response = await fetch(`${BASE_URL}/user/update`, {
+    const response = await fetch(`${API_BASE}/user/update`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
