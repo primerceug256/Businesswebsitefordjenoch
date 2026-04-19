@@ -32,32 +32,33 @@ export function MusicUploadForm({ onSuccess }: { onSuccess: () => void }) {
       data.append("genre", formData.genre);
       data.append("duration", formData.duration);
       data.append("releaseDate", formData.releaseDate);
-      // IMPORTANT: This line allows Music.tsx to filter and show the track
+      // Ensures the Music library can find and display the track
       data.append("mediaType", "audio"); 
 
       const xhr = new XMLHttpRequest();
       
-      // Track Progress
       xhr.upload.addEventListener("progress", (e) => {
         if (e.lengthComputable) {
           setUploadProgress(Math.round((e.loaded / e.total) * 100));
         }
       });
 
-      // Handle Completion
       xhr.addEventListener("load", () => {
         if (xhr.status === 200 || xhr.status === 201) {
           setUploadSuccess(true);
           setUploading(false);
           setSelectedFile(null);
-          // Refresh the list without 404-ing the page
           setTimeout(() => {
             onSuccess();
             setUploadSuccess(false);
           }, 3000);
         } else {
-          const response = JSON.parse(xhr.responseText || "{}");
-          setError(response.error || "Server rejected the upload");
+          try {
+            const response = JSON.parse(xhr.responseText || "{}");
+            setError(response.error || "Server rejected the upload");
+          } catch (e) {
+            setError("Server error occurred.");
+          }
           setUploading(false);
         }
       });
@@ -67,7 +68,6 @@ export function MusicUploadForm({ onSuccess }: { onSuccess: () => void }) {
         setUploading(false);
       });
 
-      // Fixed the broken URL here:
       xhr.open("POST", `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/music/upload`);
       xhr.setRequestHeader("Authorization", `Bearer ${publicAnonKey}`);
       xhr.send(data);
@@ -83,3 +83,13 @@ export function MusicUploadForm({ onSuccess }: { onSuccess: () => void }) {
       {uploadSuccess && (
         <div className="bg-green-600/20 text-green-400 p-3 rounded-lg flex items-center gap-2 border border-green-600/30 text-sm">
           <CheckCircle size={16} /> Mix Uploaded! Check the Music library now.
+        </div>
+      )}
+      
+      {error && (
+        <div className="bg-red-600/20 text-red-400 p-3 rounded-lg border border-red-600/30 text-sm">
+          {error}
+        </div>
+      )}
+
+      <f
