@@ -23,8 +23,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// FULL PATH TO THE NEW SERVER
-const API_BASE = `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music`;
+// THE EXACT URL FOR YOUR FUNCTION
+const FUNCTION_URL = `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music`;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -42,25 +42,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await fetch(`${API_BASE}/auth/login`, {
+      const response = await fetch(`${FUNCTION_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${publicAnonKey}`,
+          'Authorization': `Bearer ${publicAnonKey}`,
+          'apikey': publicAnonKey // Some Supabase setups require this to prevent CORS "Failed to fetch"
         },
         body: JSON.stringify({ email, password }),
       });
 
-      const text = await response.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        throw new Error(`Server Error (${response.status}): The function might not be deployed yet.`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Login failed' }));
+        throw new Error(errorData.error || `Server returned ${response.status}`);
       }
 
-      if (!response.ok) throw new Error(data.error || 'Login failed');
-
+      const data = await response.json();
       setUser(data.user);
       localStorage.setItem('user', JSON.stringify(data.user));
     } catch (error) {
@@ -71,25 +68,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signup = async (email: string, password: string, name: string) => {
     try {
-      const response = await fetch(`${API_BASE}/auth/signup`, {
+      const response = await fetch(`${FUNCTION_URL}/auth/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${publicAnonKey}`,
+          'Authorization': `Bearer ${publicAnonKey}`,
+          'apikey': publicAnonKey
         },
         body: JSON.stringify({ email, password, name }),
       });
 
-      const text = await response.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        throw new Error(`Server Error (${response.status})`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Signup failed' }));
+        throw new Error(errorData.error || 'Signup failed');
       }
 
-      if (!response.ok) throw new Error(data.error || 'Signup failed');
-
+      const data = await response.json();
       setUser(data.user);
       localStorage.setItem('user', JSON.stringify(data.user));
     } catch (error) {
@@ -105,11 +99,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateProfile = async (data: Partial<User>) => {
     if (!user) return;
-    const response = await fetch(`${API_BASE}/user/update`, {
+    const response = await fetch(`${FUNCTION_URL}/user/update`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${publicAnonKey}`,
+        'Authorization': `Bearer ${publicAnonKey}`,
+        'apikey': publicAnonKey
       },
       body: JSON.stringify({ userId: user.id, ...data }),
     });
