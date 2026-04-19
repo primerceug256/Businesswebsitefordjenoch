@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await fetch(`${API_URL}/auth/login`, {
+      const response = await fetch(`${API_URL}/auth/signin`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -43,22 +43,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const text = await response.text();
-        let errorMessage = 'Login Failed';
-        try {
-          const errData = JSON.parse(text);
-          errorMessage = errData.error || errorMessage;
-        } catch (e) {
-          errorMessage = `Error ${response.status}: Server is unavailable`;
-        }
-        throw new Error(errorMessage);
+        throw new Error(data.error || 'Login Failed');
       }
 
-      const data = await response.json();
       setUser(data.user);
       localStorage.setItem('user', JSON.stringify(data.user));
     } catch (error) {
+      console.error('Login error:', error);
       throw error;
     }
   };
@@ -75,15 +69,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password, name }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || 'Signup Failed');
+        throw new Error(data.error || 'Signup Failed');
       }
 
-      const data = await response.json();
       setUser(data.user);
       localStorage.setItem('user', JSON.stringify(data.user));
     } catch (error) {
+      console.error('Signup error:', error);
       throw error;
     }
   };
