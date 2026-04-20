@@ -17,112 +17,103 @@ app.use("*", cors({
 
 app.options("*", (c) => c.text("", 204));
 
-// ==================== DELETE FUNCTIONALITY ====================
+// ==================== DELETE LOGIC ====================
 app.delete("/make-server-98d801c7/:type/delete/:id", async (c) => {
   try {
-    const type = c.req.param("type"); 
+    const type = c.req.param("type"); // track, movie, software
     const id = c.req.param("id");
     const key = `${type}:${id}`;
-    
     const item = await kv.get(key);
-    if (!item) return c.json({ error: "Item not found" }, 404);
+    if (!item) return c.json({ error: "Not found" }, 404);
 
     if (item.fileName) {
-      if (type === "track") await music.deleteTrack(id, item.fileName);
-      else if (type === "movie") await movies.deleteMovie(id, item.fileName);
-      else if (type === "software") await software.deleteSoftware(id, item.fileName);
+      // Call standard storage delete
+      await music.deleteTrack(id, item.fileName);
+      if(item.thumbPath) await music.deleteTrack(id, item.thumbPath);
     }
 
     await kv.del(key);
     return c.json({ success: true });
-  } catch (error) { return c.json({ error: String(error) }, 500); }
+  } catch (e) { return c.json({ error: String(e) }, 500); }
 });
 
-// ==================== UPLOAD WITH THUMBNAILS ====================
-
+// ==================== UPLOADS WITH THUMBNAILS ====================
 app.post("/make-server-98d801c7/:category/upload", async (c) => {
   try {
-    const category = c.req.param("category"); // music, movies, or software
+    const category = c.req.param("category");
     const formData = await c.req.formData();
     const file = formData.get("file") as File;
     const thumb = formData.get("thumbnail") as File;
     const title = formData.get("title") as string;
 
-    if (!file || !thumb) return c.json({ error: "File and Thumbnail required" }, 400);
+    // Upload Media
+    const media = await music.uploadMusicFile(file.name, await file.arrayBuffer(), file.type);
+    // Upload Thumbnail
+    const thumbFile = await music.uploadMusicFile(`thumbs/${Date.now()}_${thumb.name}`, await thumb.arrayBuffer(), thumb.type);
 
-    // 1. Upload Media File
-    const { fileName, publicUrl } = await music.uploadMusicFile(file.name, await file.arrayBuffer(), file.type);
-    
-    // 2. Upload Thumbnail
-    const thumbRes = await music.uploadMusicFile(`thumbs/${Date.now()}_${thumb.name}`, await thumb.arrayBuffer(), thumb.type);
-
-    const itemId = `item-${Date.now()}`;
-    const metadata = {
-      id: itemId,
-      title: title || file.name,
-      url: publicUrl,
-      thumbnailUrl: thumbRes.publicUrl,
-      fileName: fileName,
-      createdAt: new Date().toISOString(),
-      // Specific fields for software/movies
+    const id = `item-${Date.now()}`;
+    const data = {
+      id, title, 
+      audioUrl: media.publicUrl, videoUrl: media.publicUrl, downloadUrl: media.publicUrl,
+      thumbnailUrl: thumbFile.publicUrl,
+      fileName: media.fileName, thumbPath: thumbFile.fileName,
+      releaseDate: new Date().toLocaleDateString(),
       platform: formData.get("platform") || "Windows",
-      price: formData.get("price") || "0",
-      genre: formData.get("genre") || "General"
+      price: formData.get("price") || "0"
     };
 
-    // Store in correct KV prefix
     const prefix = category === 'music' ? 'track' : category === 'movies' ? 'movie' : 'software';
-    await kv.set(`${prefix}:${itemId}`, metadata);
-
-    return c.json({ success: true, item: metadata });
-  } catch (error) { return c.json({ error: String(error) }, 500); }
+    await kv.set(`${prefix}:${id}`, data);
+    return c.json({ success: true });
+  } catch (e) { return c.json({ error: String(e) }, 500); }
 });
 
-// ==================== DJ DROP ORDER SYSTEM ====================
-
-// User Submit Order
+// ==================== DJ DROP ORDERS ====================
 app.post("/make-server-98d801c7/drops/order", async (c) => {
-  try {
-    const formData = await c.req.formData();
-    const orderId = `order-${Date.now()}`;
-    const proof = formData.get("proof") as File;
-    
-    let proofUrl = "";
-    if (proof) {
-      const res = await music.uploadMusicFile(`proofs/${orderId}`, await proof.arrayBuffer(), proof.type);
-      proofUrl = res.publicUrl;
-    }
+  const fd = await c.req.formData();
+  const id = `drop-${Date.now()}`;
+  const proof = fd.get("proof") as File;
+  const proofRes = await music.uploadMusicFile(`proofs/${id}`, await proof.arrayBuffer(), proof.type);
 
-    const orderData = {
-      id: orderId,
-      userId: formData.get("userId"),
-      djName: formData.get("djName"),
-      contact: formData.get("contact"),
-      email: formData.get("email"),
-      transactionId: formData.get("transactionId"),
-      proofUrl: proofUrl,
-      status: "pending", 
-      dropUrl: null,
-      createdAt: new Date().toISOString()
-    };
-
-    await kv.set(`drop_order:${orderId}`, orderData);
-    return c.json({ success: true, orderId });
-  } catch (error) { return c.json({ error: String(error) }, 500); }
+  const order = {
+    id, userId: fd.get("userId"), djName: fd.get("djName"),
+    contact: fd.get("contact"), email: fd.get("email"),
+    transactionId: fd.get("transactionId"), proofUrl: proofRes.publicUrl,
+    status: "pending", dropUrl: null
+  };
+  await kv.set(`drop_order:${id}`, order);
+  return c.json({ success: true });
 });
 
-// Admin View All Orders
 app.get("/make-server-98d801c7/drops/list", async (c) => {
-  const drops = await kv.getByPrefix("drop_order:");
-  return c.json(drops);
+  return c.json(await kv.getByPrefix("drop_order:"));
 });
 
-// User View Their Orders
 app.get("/make-server-98d801c7/drops/user/:userId", async (c) => {
-  const userId = c.req.param("userId");
   const all = await kv.getByPrefix("drop_order:");
-  return c.json(all.filter((d: any) => d.userId === userId));
+  return c.json(all.filter((d:any) => d.userId === c.req.param("userId")));
 });
 
-// Admin Accept/Deny
-app.po
+app.post("/make-server-98d801c7/admin/drops/status", async (c) => {
+  const { id, status } = await c.req.json();
+  const order = await kv.get(`drop_order:${id}`);
+  if(order) { order.status = status; await kv.set(`drop_order:${id}`, order); }
+  return c.json({ success: true });
+});
+
+app.post("/make-server-98d801c7/admin/drops/send", async (c) => {
+  const fd = await c.req.formData();
+  const id = fd.get("id") as string;
+  const file = fd.get("file") as File;
+  const res = await music.uploadMusicFile(`final/${id}`, await file.arrayBuffer(), file.type);
+  const order = await kv.get(`drop_order:${id}`);
+  if(order) { order.status = "completed"; order.dropUrl = res.publicUrl; await kv.set(`drop_order:${id}`, order); }
+  return c.json({ success: true });
+});
+
+// Standard lists
+app.get("/make-server-98d801c7/music/tracks", async (c) => c.json({ tracks: await kv.getByPrefix("track:") }));
+app.get("/make-server-98d801c7/movies/list", async (c) => c.json({ movies: await kv.getByPrefix("movie:") }));
+app.get("/make-server-98d801c7/software/list", async (c) => c.json({ software: await kv.getByPrefix("software:") }));
+
+Deno.serve(app.fetch);
