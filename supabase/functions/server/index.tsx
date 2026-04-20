@@ -1,4 +1,63 @@
-import { Hono } from "npm:hono";
+// Add these routes to your existing index.tsx
+// ==================== DJ DROP ORDER SYSTEM ====================
+
+app.post("/make-server-98d801c7/drops/order", async (c) => {
+  try {
+    const formData = await c.req.formData();
+    const orderId = `order-${Date.now()}`;
+    const proof = formData.get("proof") as File;
+    
+    let proofUrl = "";
+    if (proof) {
+      const { publicUrl } = await music.uploadMusicFile(`proofs/${orderId}`, await proof.arrayBuffer(), proof.type);
+      proofUrl = publicUrl;
+    }
+
+    const orderData = {
+      id: orderId,
+      userId: formData.get("userId"),
+      djName: formData.get("djName"),
+      contact: formData.get("contact"),
+      email: formData.get("email"),
+      transactionId: formData.get("transactionId"),
+      proofUrl: proofUrl,
+      status: "pending", // pending, accepted, denied, completed
+      dropUrl: null,
+      createdAt: new Date().toISOString()
+    };
+
+    await kv.set(`drop_order:${orderId}`, orderData);
+    return c.json({ success: true, orderId });
+  } catch (error) { return c.json({ error: String(error) }, 500); }
+});
+
+// Admin Update Drop Order Status
+app.post("/make-server-98d801c7/admin/drops/status", async (c) => {
+  const { orderId, status } = await c.req.json();
+  const order = await kv.get(`drop_order:${orderId}`);
+  if (order) {
+    order.status = status;
+    await kv.set(`drop_order:${orderId}`, order);
+  }
+  return c.json({ success: true });
+});
+
+// Admin Send Finished Drop
+app.post("/make-server-98d801c7/admin/drops/send", async (c) => {
+  const formData = await c.req.formData();
+  const orderId = formData.get("orderId") as string;
+  const file = formData.get("file") as File;
+
+  const { publicUrl } = await music.uploadMusicFile(`finished_drops/${orderId}`, await file.arrayBuffer(), file.type);
+  
+  const order = await kv.get(`drop_order:${orderId}`);
+  if (order) {
+    order.status = "completed";
+    order.dropUrl = publicUrl;
+    await kv.set(`drop_order:${orderId}`, order);
+  }
+  return c.json({ success: true });
+});import { Hono } from "npm:hono";
 import { cors } from "npm:hono/cors";
 import * as auth from "./auth.tsx";
 import * as kv from "./kv_store.tsx";
