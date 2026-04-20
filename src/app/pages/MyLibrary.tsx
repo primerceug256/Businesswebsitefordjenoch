@@ -119,4 +119,13 @@ export default function MyLibrary() {
         {/* OTHER ASSETS (Software/Music) Placeholder */}
         <section>
             <h2 className="text-xl font-black mb-6 uppercase tracking-widest flex items-center gap-3 text-slate-400">
-                <Download size={24}/>
+                <Download size={24}/> Software & Purchases
+            </h2>
+            <div className="bg-slate-900/30 p-10 rounded-[40px] border border-white/5 text-center">
+                <p className="text-slate-600 text-sm font-bold uppercase tracking-widest">Your purchased software will appear here after approval.</p>
+            </div>
+        </section>
+      </div>
+    </div>
+  );
+}
