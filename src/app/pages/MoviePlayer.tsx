@@ -6,7 +6,7 @@ import { projectId, publicAnonKey } from '/utils/supabase/info';
 
 export default function MoviePlayer() {
   const { id } = useParams();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth(); // Destructure isAdmin from AuthContext
   const navigate = useNavigate();
   const [movie, setMovie] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -17,13 +17,14 @@ export default function MoviePlayer() {
       return;
     }
 
-    if (!user.subscription) {
+    // UPDATED: If user is Admin, they don't need a subscription record to view the player
+    if (!isAdmin && !user.subscription) {
       navigate('/subscription');
       return;
     }
 
     fetchMovie();
-  }, [id, user, navigate]);
+  }, [id, user, isAdmin, navigate]);
 
   const fetchMovie = async () => {
     try {
@@ -59,8 +60,9 @@ export default function MoviePlayer() {
     );
   }
 
-  const canDownload = user?.subscription &&
-    ['weekly', 'monthly', '2months', 'gold', 'platinum', 'diamond', 'unlimited'].includes(user.subscription.plan);
+  // UPDATED LOGIC: canDownload is TRUE if you are Admin OR have a valid plan
+  const canDownload = isAdmin || (user?.subscription &&
+    ['weekly', 'monthly', '2months', 'gold', 'platinum', 'diamond', 'unlimited'].includes(user.subscription.plan));
 
   return (
     <div className="bg-black text-white min-h-screen">
@@ -106,19 +108,33 @@ export default function MoviePlayer() {
                 className="w-full bg-orange-600 py-3 rounded-lg hover:bg-orange-700 flex items-center justify-center gap-2 mb-3"
               >
                 <Download size={20} />
-                Download Movie
+                Download Movie {isAdmin && "(Lifetime Access)"}
               </a>
             ) : (
-              <p className="text-sm text-gray-400 mb-4">
-                Upgrade to Weekly Pass or higher to download movies
-              </p>
+              <div className="mb-4">
+                <p className="text-sm text-red-500 font-bold mb-2">Subscription Required</p>
+                <p className="text-xs text-gray-400">
+                  Upgrade to Weekly Pass or higher to download movies.
+                </p>
+              </div>
             )}
-            <button
-              onClick={() => navigate('/subscription')}
-              className="w-full bg-gray-800 py-3 rounded-lg hover:bg-gray-700"
-            >
-              View Plans
-            </button>
+            
+            {/* Show subscription plans button only if the user isn't already fully authorized */}
+            {!isAdmin && (
+              <button
+                onClick={() => navigate('/subscription')}
+                className="w-full bg-gray-800 py-3 rounded-lg hover:bg-gray-700"
+              >
+                View Plans
+              </button>
+            )}
+
+            {isAdmin && (
+              <div className="mt-4 p-4 border border-orange-500/30 rounded bg-orange-500/5">
+                <p className="text-[10px] text-orange-500 uppercase font-black">Admin Notice</p>
+                <p className="text-xs text-gray-400">You are logged in as the owner. All downloads are unlocked for you.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
