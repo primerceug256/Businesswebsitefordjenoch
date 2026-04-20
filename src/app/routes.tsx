@@ -1,10 +1,12 @@
-﻿import { createBrowserRouter } from 'react-router';
+--- START OF FILE Businesswebsitefordjenoch-main/src/app/routes.tsx ---
+import { createBrowserRouter } from 'react-router';
 import Layout from './components/Layout';
 import Home from './pages/Home';
 import Music from './pages/Music';
 import Movies from './pages/Movies';
-import MoviePlayer from './pages/MoviePlayer'; // Ensure this is imported
+import MoviePlayer from './pages/MoviePlayer';
 import Software from './pages/Software';
+import Apps from './pages/Apps'; // [IMPORT APPS]
 import Cart from './pages/Cart';
 import Subscription from './pages/Subscription';
 import MyLibrary from './pages/MyLibrary';
@@ -22,9 +24,9 @@ export const router = createBrowserRouter([
       { index: true, Component: Home },
       { path: 'music', Component: Music },
       { path: 'movies', Component: Movies },
-      // THIS IS THE FIX FOR THE 404 ERROR
       { path: 'movies/watch/:id', Component: MoviePlayer }, 
       { path: 'software', Component: Software },
+      { path: 'apps', Component: Apps }, // [ADD APPS ROUTE]
       { path: 'web-development', Component: WebDevelopment },
       { path: 'cart', Component: Cart },
       { path: 'subscription', Component: Subscription },
