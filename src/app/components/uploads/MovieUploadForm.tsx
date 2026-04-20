@@ -57,7 +57,7 @@ export function MovieUploadForm({ onSuccess }: { onSuccess: () => void }) {
         }
       });
 
-      xhr.open("POST", `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/movies/upload`);
+      xhr.open("POST", `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/movies/upload`);
       xhr.setRequestHeader("Authorization", `Bearer ${publicAnonKey}`);
       xhr.send(data);
     } catch (err) {
@@ -70,10 +70,10 @@ export function MovieUploadForm({ onSuccess }: { onSuccess: () => void }) {
     <div className="space-y-4">
       {uploadSuccess && (
         <div className="bg-green-600/20 text-green-400 p-3 rounded-lg flex items-center gap-2 border border-green-600/30">
-          <CheckCircle size={18} /> Upload Complete!
+          <CheckCircle size={18} /> Success!
         </div>
       )}
-      {error && <div className="bg-red-600/20 text-red-400 p-3 rounded-lg border border-red-600/30">{error}</div>}
+      {error && <div className="bg-red-600/20 text-red-400 p-3 rounded-lg border border-red-600/30">Failed: {error}</div>}
 
       <form onSubmit={handleUpload} className="space-y-4">
         <input 

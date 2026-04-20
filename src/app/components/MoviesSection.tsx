@@ -108,7 +108,27 @@ export function MoviesSection() {
   };
 
   if (movies.length === 0 && !loading && !error) {
-    return null; // Don't show section if no movies
+    return (
+      <section id="movies" className="py-20 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
+              Free Movies
+            </h2>
+            <div className="w-24 h-1 bg-gradient-to-r from-red-500 to-pink-500 mx-auto mb-6"></div>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              No movies uploaded yet. Check back soon!
+            </p>
+          </motion.div>
+        </div>
+      </section>
+    );
   }
 
   return (
