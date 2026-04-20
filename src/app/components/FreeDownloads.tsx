@@ -167,7 +167,7 @@ export function FreeDownloads() {
   const fetchTracks = async () => {
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/music/tracks`,
+        `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/music/tracks`,
         {
           headers: {
             Authorization: `Bearer ${publicAnonKey}`,
