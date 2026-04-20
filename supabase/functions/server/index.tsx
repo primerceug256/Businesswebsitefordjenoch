@@ -8,54 +8,41 @@ import * as software from "./software.tsx";
 import * as payments from "./payments.tsx";
 
 const app = new Hono();
-
-app.use("*", cors({
-    origin: "*",
-    allowHeaders: ["Content-Type", "Authorization", "apikey", "x-client-info"],
-    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-}));
-
-app.options("*", (c) => c.text("", 204));
+app.use("*", cors());
 
 // ==================== DELETE LOGIC ====================
 app.delete("/make-server-98d801c7/:type/delete/:id", async (c) => {
   try {
-    const type = c.req.param("type"); // track, movie, software
-    const id = c.req.param("id");
+    const { type, id } = c.req.param();
     const key = `${type}:${id}`;
     const item = await kv.get(key);
     if (!item) return c.json({ error: "Not found" }, 404);
-
-    if (item.fileName) {
-      await music.deleteTrack(id, item.fileName);
-      if(item.thumbPath) await music.deleteTrack(id, item.thumbPath);
-    }
+    if (item.fileName) await music.deleteTrack(id, item.fileName);
+    if (item.thumbPath) await music.deleteTrack(id, item.thumbPath);
     await kv.del(key);
     return c.json({ success: true });
   } catch (e) { return c.json({ error: String(e) }, 500); }
 });
 
-// ==================== UPLOADS WITH THUMBNAILS ====================
+// ==================== UPLOAD WITH THUMBNAILS ====================
 app.post("/make-server-98d801c7/:category/upload", async (c) => {
   try {
     const category = c.req.param("category");
-    const formData = await c.req.formData();
-    const file = formData.get("file") as File;
-    const thumb = formData.get("thumbnail") as File;
-    const title = formData.get("title") as string;
+    const fd = await c.req.formData();
+    const file = fd.get("file") as File;
+    const thumb = fd.get("thumbnail") as File;
+    const title = fd.get("title") as string;
 
     const media = await music.uploadMusicFile(file.name, await file.arrayBuffer(), file.type);
-    const thumbFile = await music.uploadMusicFile(`thumbs/${Date.now()}_${thumb.name}`, await thumb.arrayBuffer(), thumb.type);
+    const thumbRes = await music.uploadMusicFile(`thumbs/${Date.now()}_${thumb.name}`, await thumb.arrayBuffer(), thumb.type);
 
     const id = `item-${Date.now()}`;
     const data = {
       id, title, 
       audioUrl: media.publicUrl, videoUrl: media.publicUrl, downloadUrl: media.publicUrl,
-      thumbnailUrl: thumbFile.publicUrl,
-      fileName: media.fileName, thumbPath: thumbFile.fileName,
+      thumbnailUrl: thumbRes.publicUrl, fileName: media.fileName, thumbPath: thumbRes.fileName,
       releaseDate: new Date().toLocaleDateString(),
-      platform: formData.get("platform") || "Windows",
-      price: formData.get("price") || "0"
+      platform: fd.get("platform") || "Windows", price: fd.get("price") || "0"
     };
 
     const prefix = category === 'music' ? 'track' : category === 'movies' ? 'movie' : 'software';
@@ -69,21 +56,13 @@ app.post("/make-server-98d801c7/drops/order", async (c) => {
   const fd = await c.req.formData();
   const id = `drop-${Date.now()}`;
   const proof = fd.get("proof") as File;
-  const proofRes = await music.uploadMusicFile(`proofs/${id}`, await proof.arrayBuffer(), proof.type);
-
-  const order = {
-    id, userId: fd.get("userId"), djName: fd.get("djName"),
-    contact: fd.get("contact"), email: fd.get("email"),
-    transactionId: fd.get("transactionId"), proofUrl: proofRes.publicUrl,
-    status: "pending", dropUrl: null
-  };
+  const res = await music.uploadMusicFile(`proofs/${id}`, await proof.arrayBuffer(), proof.type);
+  const order = { id, userId: fd.get("userId"), djName: fd.get("djName"), contact: fd.get("contact"), transactionId: fd.get("transactionId"), proofUrl: res.publicUrl, status: "pending", dropUrl: null };
   await kv.set(`drop_order:${id}`, order);
   return c.json({ success: true });
 });
 
-app.get("/make-server-98d801c7/drops/list", async (c) => {
-  return c.json(await kv.getByPrefix("drop_order:"));
-});
+app.get("/make-server-98d801c7/drops/list", async (c) => c.json(await kv.getByPrefix("drop_order:")));
 
 app.get("/make-server-98d801c7/drops/user/:userId", async (c) => {
   const all = await kv.getByPrefix("drop_order:");
