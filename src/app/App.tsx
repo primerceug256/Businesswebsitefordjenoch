@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react';
-import { Smartphone, Download, ShieldCheck, Zap, Loader, Search } from 'lucide-react';
-import { projectId, publicAnonKey } from "/utils/supabase/info";
+import { RouterProvider } from 'react-router';
+import { router } from './routes';
+import { AuthProvider } from './context/AuthContext';
+import { CartProvider } from './context/CartContext';
 
-interface AppItem {
-  id: string;
-  title: string;
-  description: string;
-  version: string;
-  platform: string;
-  category: string;
-  download
+export default function App() {
+  return (
+    <AuthProvider>
+      <CartProvider>
+        <RouterProvider router={router} />
+      </CartProvider>
+    </AuthProvider>
+  );
+}
