@@ -1,4 +1,3 @@
---- START OF FILE Businesswebsitefordjenoch-main/src/app/routes.tsx ---
 import { createBrowserRouter } from 'react-router';
 import Layout from './components/Layout';
 import Home from './pages/Home';
@@ -6,7 +5,7 @@ import Music from './pages/Music';
 import Movies from './pages/Movies';
 import MoviePlayer from './pages/MoviePlayer';
 import Software from './pages/Software';
-import Apps from './pages/Apps'; // [IMPORT APPS]
+import Apps from './pages/Apps'; 
 import Cart from './pages/Cart';
 import Subscription from './pages/Subscription';
 import MyLibrary from './pages/MyLibrary';
@@ -26,7 +25,7 @@ export const router = createBrowserRouter([
       { path: 'movies', Component: Movies },
       { path: 'movies/watch/:id', Component: MoviePlayer }, 
       { path: 'software', Component: Software },
-      { path: 'apps', Component: Apps }, // [ADD APPS ROUTE]
+      { path: 'apps', Component: Apps }, 
       { path: 'web-development', Component: WebDevelopment },
       { path: 'cart', Component: Cart },
       { path: 'subscription', Component: Subscription },
