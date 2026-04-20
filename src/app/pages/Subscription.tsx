@@ -21,18 +21,16 @@ const PLANS = [
 export default function Subscription() {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const [selectedPlan, setSelectedPlan] = useState<string>('');
 
   const handleSelectPlan = (planId: string) => {
     if (isAdmin) {
-      alert("Admin Master Access is already active!");
+      alert("Admin Master Access is active!");
       return;
     }
     if (!user) {
       navigate('/signup');
       return;
     }
-    setSelectedPlan(planId);
     navigate('/cart');
   };
 
@@ -40,89 +38,70 @@ export default function Subscription() {
     <div className="bg-black text-white min-h-screen py-16">
       <div className="container mx-auto px-4">
         
-        {/* Admin Banner */}
+        {/* Master Access Banner for you */}
         {isAdmin && (
-          <div className="max-w-4xl mx-auto mb-12 bg-orange-600/20 border border-orange-600 rounded-3xl p-8 flex flex-col md:flex-row items-center gap-6">
-            <div className="bg-orange-600 p-4 rounded-full">
-              <ShieldCheck size={40} className="text-white" />
-            </div>
+          <div className="max-w-4xl mx-auto mb-12 bg-orange-600/10 border border-orange-600 p-6 rounded-3xl flex items-center gap-4">
+            <ShieldCheck className="text-orange-600 w-10 h-10" />
             <div>
-              <h2 className="text-2xl font-black text-orange-500 uppercase">Admin Master Access</h2>
-              <p className="text-gray-300">All content is automatically unlocked for you forever.</p>
+              <h2 className="text-xl font-bold uppercase">Owner Master Access</h2>
+              <p className="text-gray-400 text-sm">You bypass all payments. Everything is free for you.</p>
             </div>
           </div>
         )}
 
-        <div className="text-center mb-12">
-          <h1 className="text-6xl font-bold mb-4 bg-gradient-to-r from-orange-600 to-pink-600 bg-clip-text text-transparent">
-            Choose Your Plan
-          </h1>
-          <p className="text-xl text-gray-400">
-            {isAdmin ? "Previewing customer plans." : "New users get 6 hours free! Special holiday offers available."}
-          </p>
+        <div className="text-center mb-16">
+          <h1 className="text-5xl font-black mb-4">Choose Your Pass</h1>
+          <p className="text-gray-400">Get instant access to the party beast library.</p>
         </div>
 
-        {/* Plans Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {PLANS.map((plan) => {
-            const Icon = plan.icon;
-            return (
-              <div
-                key={plan.id}
-                className={`relative bg-gray-900 rounded-2xl p-6 transition-all border border-white/5 ${
-                  plan.featured ? 'ring-4 ring-purple-600 shadow-2xl' : ''
-                }`}
-              >
-                {plan.featured && (
-                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-purple-600 px-4 py-1 rounded-full text-xs font-bold uppercase">
-                    Lifetime
-                  </div>
-                )}
-
-                <div className={`w-12 h-12 rounded-full bg-${plan.color}-600 flex items-center justify-center mb-4`}>
-                  <Icon size={24} className="text-white" />
-                </div>
-
-                <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
-                <div className="mb-4">
-                  <span className="text-4xl font-bold text-orange-600">{plan.price.toLocaleString()}</span>
-                  <span className="text-gray-400 text-sm ml-1">UGX</span>
-                </div>
-                <p className="text-gray-400 mb-6 text-xs uppercase tracking-widest">{plan.duration}</p>
-
-                <ul className="space-y-3 mb-8">
-                  <li className="flex items-center gap-2 text-sm text-gray-300">
-                    <Check size={16} className="text-green-500" /> HD Streaming
-                  </li>
-                  <li className="flex items-center gap-2 text-sm text-gray-300">
-                    <Check size={16} className="text-green-500" /> All Devices
-                  </li>
-                  {plan.download && (
-                    <li className="flex items-center gap-2 text-sm text-green-400 font-bold">
-                      <Check size={16} className="text-green-500" /> Downloads Enabled
-                    </li>
-                  )}
-                </ul>
-
-                <button
-                  onClick={() => handleSelectPlan(plan.id)}
-                  disabled={isAdmin}
-                  className={`w-full py-3 rounded-xl font-black uppercase tracking-widest transition-all ${
-                    isAdmin 
-                    ? 'bg-gray-800 text-gray-500' 
-                    : `bg-${plan.color}-600 hover:opacity-90`
-                  }`}
-                >
-                  {isAdmin ? "Admin Active" : "Select Plan"}
-                </button>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {PLANS.map((plan) => (
+            <div 
+              key={plan.id} 
+              className={`bg-gray-900 p-6 rounded-3xl border border-white/5 flex flex-col ${plan.featured ? 'ring-2 ring-purple-600' : ''}`}
+            >
+              <div className={`w-10 h-10 rounded-full bg-${plan.color}-600 flex items-center justify-center mb-4`}>
+                <plan.icon size={20} className="text-white" />
               </div>
-            );
-          })}
+              <h3 className="font-bold text-xl mb-1">{plan.name}</h3>
+              <div className="mb-4">
+                <span className="text-3xl font-black text-orange-500">{plan.price.toLocaleString()}</span>
+                <span className="text-xs ml-1 text-gray-500">UGX</span>
+              </div>
+              <p className="text-[10px] uppercase font-black tracking-widest text-gray-400 mb-6 bg-white/5 w-fit px-2 py-1 rounded">{plan.duration}</p>
+              
+              <ul className="space-y-3 mb-8 flex-1">
+                <li className="flex items-center gap-2 text-xs text-gray-300"><Check size={14} className="text-green-500"/> HD Streaming</li>
+                <li className="flex items-center gap-2 text-xs text-gray-300"><Check size={14} className="text-green-500"/> Any Device</li>
+                {plan.download && <li className="flex items-center gap-2 text-xs text-green-400 font-bold"><Check size={14} /> Full Downloads</li>}
+              </ul>
+
+              <button 
+                onClick={() => handleSelectPlan(plan.id)}
+                className={`w-full py-3 rounded-xl font-black uppercase text-xs tracking-widest ${isAdmin ? 'bg-gray-800' : 'bg-orange-600 hover:bg-orange-700'}`}
+              >
+                {isAdmin ? "Admin Mode" : "Buy Now"}
+              </button>
+            </div>
+          ))}
         </div>
 
-        {/* Special Offers */}
-        <div className="mt-16 bg-gray-900 rounded-3xl p-10 border border-white/5">
-          <h2 className="text-3xl font-black mb-10 text-center uppercase tracking-tighter">🎁 Free Promotions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-            <div className="bg-black/40 p-8 rounded-2xl border border-white/5">
-              <div className="text-4xl mb-4">🆕</div>
+        <div className="mt-20 grid grid-cols-1 md:grid-cols-3 gap-6">
+           <div className="bg-gray-900/50 p-6 rounded-2xl border border-white/5 text-center">
+              <h3 className="font-bold mb-2">🎁 Welcome Bonus</h3>
+              <p className="text-xs text-gray-500">6 Hours free for every new signup.</p>
+           </div>
+           <div className="bg-gray-900/50 p-6 rounded-2xl border border-white/5 text-center">
+              <h3 className="font-bold mb-2">🎉 Holiday Specials</h3>
+              <p className="text-xs text-gray-500">Free access during national holidays.</p>
+           </div>
+           <div className="bg-gray-900/50 p-6 rounded-2xl border border-white/5 text-center">
+              <h3 className="font-bold mb-2">🎂 Birthday Gift</h3>
+              <p className="text-xs text-gray-500">July 20th is free access day!</p>
+           </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
