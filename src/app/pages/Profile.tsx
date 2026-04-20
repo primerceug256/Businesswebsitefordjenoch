@@ -1,177 +1,72 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { User, Upload, Clock, Download, Play } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { Clock, User, Camera, Save } from 'lucide-react';
+import { projectId, publicAnonKey } from "/utils/supabase/info";
 
 export default function Profile() {
-  const { user, updateProfile } = useAuth();
-  const navigate = useNavigate();
-  const [name, setName] = useState(user?.name || '');
-  const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [timeLeft, setTimeLeft] = useState('');
+  const { user, isAdmin } = useAuth();
+  const [timeLeft, setTimeLeft] = useState("");
+  const [newName, setNewName] = useState(user?.name || "");
+  const [avatar, setAvatar] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
 
+  // COUNTDOWN TIMER LOGIC
   useEffect(() => {
-    if (!user) {
-      navigate('/login');
-      return;
-    }
+    if (!user?.subscription?.expiresAt) return;
 
-    // Calculate time left on subscription
-    if (user.subscription?.expiresAt) {
-      const interval = setInterval(() => {
-        const now = new Date().getTime();
-        const expires = new Date(user.subscription!.expiresAt).getTime();
-        const diff = expires - now;
+    const timer = setInterval(() => {
+      const end = new Date(user.subscription.expiresAt).getTime();
+      const now = new Date().getTime();
+      const diff = end - now;
 
-        if (diff <= 0) {
-          setTimeLeft('Expired');
-        } else {
-          const hours = Math.floor(diff / (1000 * 60 * 60));
-          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-          setTimeLeft(`${hours}h ${minutes}m`);
-        }
-      }, 1000);
+      if (diff <= 0) {
+        setTimeLeft("EXPIRED");
+        clearInterval(timer);
+      } else {
+        const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        setTimeLeft(`${d}d ${h}h ${m}m remaining`);
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [user]);
 
-      return () => clearInterval(interval);
-    }
-  }, [user, navigate]);
+  const updateProfile = async () => {
+    setLoading(true);
+    const fd = new FormData();
+    fd.append("userId", user.id);
+    fd.append("name", newName);
+    if (avatar) fd.append("avatar", avatar);
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      setProfilePhoto(e.target.files[0]);
-    }
+    await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/auth/profile/update`, {
+      method: 'POST', body: fd
+    });
+    alert("Profile Updated! Refreshing...");
+    window.location.reload();
   };
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      // In a real app, would upload photo to storage first
-      await updateProfile({ name });
-      alert('Profile updated!');
-    } catch (error) {
-      console.error('Error updating profile:', error);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (!user) return null;
 
   return (
-    <div className="bg-black text-white min-h-screen py-16">
-      <div className="container mx-auto px-4 max-w-4xl">
-        <h1 className="text-5xl font-bold mb-8 bg-gradient-to-r from-orange-600 to-pink-600 bg-clip-text text-transparent">
-          My Profile
-        </h1>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="bg-gray-900 rounded-2xl p-6">
-            <div className="text-center">
-              <div className="w-32 h-32 rounded-full bg-gradient-to-r from-orange-600 to-pink-600 flex items-center justify-center mx-auto mb-4">
-                {user.profilePhoto ? (
-                  <img src={user.profilePhoto} alt="Profile" className="w-full h-full rounded-full object-cover" />
-                ) : (
-                  <User size={64} />
-                )}
-              </div>
-              <label className="inline-block bg-orange-600 px-4 py-2 rounded-lg cursor-pointer hover:bg-orange-700">
-                <Upload size={16} className="inline mr-2" />
-                Change Photo
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoUpload}
-                  className="hidden"
-                />
-              </label>
-            </div>
+    <div className="min-h-screen bg-black text-white p-6">
+      <div className="max-w-xl mx-auto space-y-8">
+        <div className="bg-slate-900 p-8 rounded-[48px] border border-white/5 text-center">
+          <div className="relative w-32 h-32 mx-auto mb-4">
+             <img src={user?.avatarUrl || "https://placehold.co/128"} className="w-full h-full rounded-full object-cover border-4 border-orange-600" />
+             <label className="absolute bottom-0 right-0 bg-orange-600 p-2 rounded-full cursor-pointer"><Camera size={16}/><input type="file" className="hidden" onChange={e => setAvatar(e.target.files?.[0] || null)}/></label>
           </div>
-
-          <div className="md:col-span-2 space-y-6">
-            <div className="bg-gray-900 rounded-2xl p-6">
-              <h2 className="text-2xl font-bold mb-4">Account Information</h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm mb-2">Name</label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full bg-gray-800 px-4 py-3 rounded-lg focus:ring-2 focus:ring-orange-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm mb-2">Email</label>
-                  <input
-                    type="email"
-                    value={user.email}
-                    disabled
-                    className="w-full bg-gray-800 px-4 py-3 rounded-lg opacity-50"
-                  />
-                </div>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="bg-orange-600 px-6 py-3 rounded-lg font-semibold hover:bg-orange-700 disabled:opacity-50"
-                >
-                  {saving ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </div>
-
-            <div className="bg-gray-900 rounded-2xl p-6">
-              <h2 className="text-2xl font-bold mb-4">Subscription</h2>
-              {user.subscription ? (
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <p className="text-gray-400">Current Plan</p>
-                      <p className="text-2xl font-bold text-orange-600">
-                        {user.subscription.plan.toUpperCase()} PASS
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 bg-orange-600/20 px-4 py-2 rounded-lg">
-                      <Clock size={20} className="text-orange-600" />
-                      <span className="font-bold">{timeLeft}</span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => navigate('/subscription')}
-                    className="w-full bg-orange-600 py-3 rounded-lg font-semibold hover:bg-orange-700"
-                  >
-                    Upgrade Plan
-                  </button>
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <p className="text-gray-400 mb-4">No active subscription</p>
-                  <button
-                    onClick={() => navigate('/subscription')}
-                    className="bg-orange-600 px-6 py-3 rounded-lg font-semibold hover:bg-orange-700"
-                  >
-                    Choose a Plan
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="bg-gray-900 rounded-2xl p-6">
-              <h2 className="text-2xl font-bold mb-4">Quick Stats</h2>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-800 p-4 rounded-lg text-center">
-                  <Play size={32} className="mx-auto mb-2 text-orange-600" />
-                  <p className="text-2xl font-bold">0</p>
-                  <p className="text-sm text-gray-400">Movies Watched</p>
-                </div>
-                <div className="bg-gray-800 p-4 rounded-lg text-center">
-                  <Download size={32} className="mx-auto mb-2 text-orange-600" />
-                  <p className="text-2xl font-bold">0</p>
-                  <p className="text-sm text-gray-400">Downloads</p>
-                </div>
-              </div>
-            </div>
+          <input className="bg-transparent text-2xl font-black text-center w-full outline-none" value={newName} onChange={e => setNewName(e.target.value)} />
+          <p className="text-slate-500 text-sm mb-6">{user?.email}</p>
+          
+          <div className="bg-black/40 p-6 rounded-3xl border border-white/5">
+             <p className="text-[10px] font-black uppercase text-orange-500 mb-1">Subscription Status</p>
+             <div className="flex items-center justify-center gap-2 text-xl font-black italic">
+                <Clock className="text-orange-500" /> {isAdmin ? "LIFETIME ADMIN ACCESS" : timeLeft || "NO ACTIVE PLAN"}
+             </div>
           </div>
+          
+          <button onClick={updateProfile} className="mt-6 w-full bg-orange-600 py-4 rounded-2xl font-black uppercase flex items-center justify-center gap-2">
+             {loading ? "Saving..." : <><Save size={18}/> Save Changes</>}
+          </button>
         </div>
       </div>
     </div>
