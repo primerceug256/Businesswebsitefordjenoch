@@ -3,15 +3,13 @@ import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import Music from "./pages/Music";
 import Movies from "./pages/Movies";
+import MoviePlayer from "./pages/MoviePlayer"; // Ensure this is imported
 import Software from "./pages/Software";
 import Cart from "./pages/Cart";
 import Subscription from "./pages/Subscription";
-import Contact from "./pages/Contact";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import AdminDashboard from "./pages/AdminDashboard";
 import MyLibrary from "./pages/MyLibrary";
 import DJDropOrder from "./pages/DJDropOrder";
+import AdminDashboard from "./pages/AdminDashboard";
 
 export const router = createBrowserRouter([
   {
@@ -21,15 +19,14 @@ export const router = createBrowserRouter([
       { index: true, Component: Home },
       { path: "music", Component: Music },
       { path: "movies", Component: Movies },
+      // THIS IS THE FIX FOR THE 404 ERROR
+      { path: "movies/watch/:id", Component: MoviePlayer }, 
       { path: "software", Component: Software },
       { path: "cart", Component: Cart },
       { path: "subscription", Component: Subscription },
-      { path: "contact", Component: Contact },
-      { path: "login", Component: Login },
-      { path: "signup", Component: Signup },
-      { path: "admin", Component: AdminDashboard },
       { path: "my-library", Component: MyLibrary },
       { path: "dj-drops", Component: DJDropOrder },
+      { path: "admin", Component: AdminDashboard },
     ],
   },
 ]);
