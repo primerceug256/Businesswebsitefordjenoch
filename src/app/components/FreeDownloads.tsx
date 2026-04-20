@@ -180,7 +180,7 @@ export function FreeDownloads() {
       }
 
       const data = await response.json();
-      setTracks(data.tracks || []);
+      setTracks(Array.isArray(data.tracks) ? data.tracks : []);
     } catch (err) {
       console.error("Error fetching tracks:", err);
       setError(err instanceof Error ? err.message : "Failed to load tracks");

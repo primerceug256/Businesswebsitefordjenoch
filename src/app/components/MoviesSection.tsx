@@ -98,7 +98,7 @@ export function MoviesSection() {
       }
 
       const data = await response.json();
-      setMovies(data.movies || []);
+      setMovies(Array.isArray(data.movies) ? data.movies : []);
     } catch (err) {
       console.error("Error fetching movies:", err);
       setError(err instanceof Error ? err.message : "Failed to load movies");

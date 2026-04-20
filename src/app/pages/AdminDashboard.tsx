@@ -28,27 +28,27 @@ export default function AdminDashboard() {
       // 1. Fetch Approvals (Pending Payments)
       const appRes = await fetch(`https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/admin/pending`, { headers });
       const appData = await appRes.json();
-      setApprovals(appData || []);
+      setApprovals(Array.isArray(appData) ? appData : []);
 
       // 2. Fetch DJ Drops
       const dropRes = await fetch(`https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/drops/list`, { headers });
       const dropData = await dropRes.json();
-      setDrops(dropData.drops || []);
+      setDrops(Array.isArray(dropData.drops) ? dropData.drops : []);
 
       // 3. Fetch Music
       const musicRes = await fetch(`https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/music/tracks`, { headers });
       const musicData = await musicRes.json();
-      setMusic(musicData.tracks || []);
+      setMusic(Array.isArray(musicData.tracks) ? musicData.tracks : []);
 
       // 4. Fetch Movies
       const movieRes = await fetch(`https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/movies/list`, { headers });
       const movieData = await movieRes.json();
-      setMovies(movieData.movies || []);
+      setMovies(Array.isArray(movieData.movies) ? movieData.movies : []);
 
       // 5. Fetch Software
       const swRes = await fetch(`https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/software/list`, { headers });
       const swData = await swRes.json();
-      setSoftware(swData.software || []);
+      setSoftware(Array.isArray(swData.software) ? swData.software : []);
 
     } catch (e) {
       console.error("Error fetching admin data:", e);

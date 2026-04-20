@@ -10,7 +10,7 @@ export default function MyLibrary() {
   useEffect(() => {
     if (user) {
       fetch(`https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/drops/user/${user.id}`, { headers: { Authorization: `Bearer ${publicAnonKey}` } })
-      .then(r => r.json()).then(d => setOrders(d || []));
+      .then(r => r.json()).then(d => setOrders(Array.isArray(d) ? d : []));
     }
   }, [user]);
 

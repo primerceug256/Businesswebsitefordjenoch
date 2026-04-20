@@ -9,7 +9,7 @@ export default function Movies() {
   useEffect(() => {
     fetch(`https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/movies/list`, {
       headers: { Authorization: `Bearer ${publicAnonKey}` }
-    }).then(r => r.json()).then(d => setMovies(d.movies || []));
+    }).then(r => r.json()).then(d => setMovies(Array.isArray(d.movies) ? d.movies : []));
   }, []);
 
   const download = (m: any) => {

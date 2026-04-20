@@ -18,7 +18,7 @@ export default function Music() {
       );
       const data = await response.json();
       // We take everything the server gives us
-      setTracks(data.tracks || []);
+      setTracks(Array.isArray(data.tracks) ? data.tracks : []);
     } catch (error) {
       console.error('Error fetching tracks:', error);
     } finally {
