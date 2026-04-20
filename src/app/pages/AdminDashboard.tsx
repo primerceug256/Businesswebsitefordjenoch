@@ -16,16 +16,14 @@ export default function AdminDashboard() {
     setLoading(true);
     const h = { Authorization: `Bearer ${publicAnonKey}` };
     try {
-      const [uR, pR, muR, moR, swR, drR] = await Promise.all([
-        fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/admin/users`, { headers: h }),
-        fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/payments/pending`, { headers: h }),
+      const [muR, moR, swR, drR] = await Promise.all([
         fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/music/tracks`, { headers: h }),
         fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/movies/list`, { headers: h }),
         fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/software/list`, { headers: h }),
         fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/drops/list`, { headers: h })
       ]);
       setContent({ music: (await muR.json()).tracks || [], movies: (await moR.json()).movies || [], software: (await swR.json()).software || [] });
-      setData({ users: (await uR.json()).users || [], payments: (await pR.json()).payments || [], drops: await drR.json() || [] });
+      setData({ ...data, drops: await drR.json() || [] });
     } catch (e) { console.error(e); }
     setLoading(false);
   };
@@ -33,17 +31,14 @@ export default function AdminDashboard() {
   useEffect(() => { if (!isAdmin) navigate('/'); else fetchAll(); }, [isAdmin]);
 
   const deleteItem = async (type: string, id: string) => {
-    if (!confirm("Delete permanently?")) return;
-    await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/${type}/delete/${id}`, {
-      method: 'DELETE', headers: { Authorization: `Bearer ${publicAnonKey}` }
-    });
+    if (!confirm("Permanent Delete?")) return;
+    await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/${type}/delete/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${publicAnonKey}` } });
     fetchAll();
   };
 
-  const setDropStatus = async (id: string, status: string) => {
+  const setStatus = async (id: string, status: string) => {
     await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/admin/drops/status`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${publicAnonKey}` },
-      body: JSON.stringify({ id, status })
+      method:'POST', headers:{'Content-Type':'application/json', Authorization:`Bearer ${publicAnonKey}`}, body:JSON.stringify({id,status})
     });
     fetchAll();
   };
@@ -51,114 +46,96 @@ export default function AdminDashboard() {
   if (!isAdmin) return null;
 
   return (
-    <div className="bg-slate-950 text-white min-h-screen pb-20">
-      <div className="bg-slate-900 p-4 flex justify-between items-center sticky top-0 z-50">
-        <h1 className="font-black text-orange-500 uppercase">Admin Hub</h1>
-        <button onClick={fetchAll} className={loading ? "animate-spin" : ""}><RefreshCw /></button>
+    <div className="bg-slate-950 text-white min-h-screen pb-20 p-4">
+      <div className="flex justify-between items-center mb-8 bg-slate-900 p-6 rounded-3xl border border-white/5">
+         <h1 className="text-2xl font-black text-orange-500 uppercase italic">Admin Dash</h1>
+         <button onClick={fetchAll} className={loading ? "animate-spin" : ""}><RefreshCw/></button>
       </div>
 
-      <div className="p-4 max-w-7xl mx-auto">
-        <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
-          {['overview', 'dj drops', 'music', 'movies', 'software'].map(t => (
-            <button key={t} onClick={() => setTab(t)} className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest ${tab === t ? 'bg-orange-600' : 'bg-slate-900'}`}>{t}</button>
+      <div className="flex gap-2 mb-8 overflow-x-auto">
+        {['dj drops', 'music', 'movies', 'software'].map(t => (
+          <button key={t} onClick={() => setTab(t)} className={`px-6 py-2 rounded-full text-[10px] font-black uppercase ${tab === t ? 'bg-orange-600' : 'bg-slate-900'}`}>{t}</button>
+        ))}
+      </div>
+
+      {tab === 'dj drops' && (
+        <div className="grid gap-4">
+          {data.drops.map((d: any) => (
+            <div key={d.id} className="bg-slate-900 p-6 rounded-[32px] border border-white/5 flex justify-between items-center">
+              <div><p className="font-black text-xl text-orange-500 italic uppercase">{d.djName}</p><p className="text-xs text-slate-500">{d.status}</p></div>
+              <div className="flex gap-3">
+                {d.status === 'pending' && (
+                  <><button onClick={()=>setStatus(d.id, 'accepted')} className="bg-green-600 p-2 rounded-lg"><Check/></button>
+                  <button onClick={()=>setStatus(d.id, 'denied')} className="bg-red-600 p-2 rounded-lg"><X/></button></>
+                )}
+                {d.status === 'accepted' && (
+                  <input type="file" onChange={async e => {
+                    const fd = new FormData(); fd.append("file", e.target.files?.[0]!); fd.append("id", d.id);
+                    await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/admin/drops/send`, { method:'POST', headers:{Authorization:`Bearer ${publicAnonKey}`}, body:fd });
+                    fetchAll();
+                  }} />
+                )}
+                <button onClick={() => deleteItem('drop_order', d.id)} className="text-red-500"><Trash2/></button>
+              </div>
+            </div>
           ))}
         </div>
+      )}
 
-        {tab === 'dj drops' && (
-          <div className="grid gap-4">
-            {data.drops.map((d: any) => (
-              <div key={d.id} className="bg-slate-900 p-6 rounded-[32px] border border-white/5 flex flex-col md:flex-row justify-between items-center">
-                <div>
-                   <p className="text-orange-500 font-black text-xl uppercase italic">{d.djName}</p>
-                   <p className="text-xs text-slate-400">{d.email} | {d.contact}</p>
-                </div>
-                <div className="text-center">
-                   <a href={d.proofUrl} target="_blank" className="text-[10px] font-black uppercase bg-white/5 px-4 py-2 rounded-full hover:bg-orange-600">View Proof</a>
-                </div>
-                <div className="flex items-center gap-3">
-                   {d.status === 'pending' ? (
-                     <>
-                        <button onClick={() => setDropStatus(d.id, 'accepted')} className="bg-green-600 p-3 rounded-2xl"><Check/></button>
-                        <button onClick={() => setDropStatus(d.id, 'denied')} className="bg-red-600 p-3 rounded-2xl"><X/></button>
-                     </>
-                   ) : d.status === 'accepted' ? (
-                      <input type="file" onChange={async (e) => {
-                         const file = e.target.files?.[0]; if(!file) return;
-                         const fd = new FormData(); fd.append("file", file); fd.append("id", d.id);
-                         await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/admin/drops/send`, { method:'POST', headers:{Authorization:`Bearer ${publicAnonKey}`}, body:fd });
-                         fetchAll();
-                      }} />
-                   ) : <p className="font-black text-[10px] uppercase">{d.status}</p>}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {(tab === 'music' || tab === 'movies' || tab === 'software') && (
-           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-              <div className="bg-slate-900 p-8 rounded-[40px] border border-white/5">
-                <h2 className="text-xl font-black uppercase mb-6">Manage {tab}</h2>
-                <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                   {(tab === 'music' ? content.music : tab === 'movies' ? content.movies : content.software).map((item:any) => (
-                     <div key={item.id} className="bg-black/40 p-4 rounded-3xl border border-white/5 flex justify-between items-center">
-                        <div className="flex items-center gap-4">
-                           <img src={item.thumbnailUrl} className="w-12 h-12 rounded-xl object-cover" />
-                           <p className="font-bold text-sm truncate">{item.title}</p>
-                        </div>
-                        <button onClick={() => deleteItem(tab === 'music' ? 'track' : tab === 'movies' ? 'movie' : 'software', item.id)} className="text-red-500 hover:bg-red-500/10 p-3 rounded-2xl"><Trash2/></button>
-                     </div>
-                   ))}
-                </div>
-              </div>
-              <div className="bg-slate-900 p-8 rounded-[40px] border border-white/5">
-                 <h2 className="text-xl font-black uppercase mb-6">New Upload</h2>
-                 <UploadFormWithThumb type={tab} onSuccess={fetchAll} />
+      {(tab === 'music' || tab === 'movies' || tab === 'software') && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+           <div className="bg-slate-900 p-8 rounded-[40px] border border-white/5">
+              <h2 className="text-xl font-black uppercase mb-6 italic">Manage {tab}</h2>
+              <div className="space-y-3">
+                {(tab==='music'?content.music : tab==='movies'?content.movies : content.software).map((i:any) => (
+                  <div key={i.id} className="bg-black/40 p-4 rounded-3xl flex justify-between items-center border border-white/5">
+                    <div className="flex items-center gap-4"><img src={i.thumbnailUrl} className="w-10 h-10 rounded-xl object-cover"/><p className="text-sm font-bold truncate">{i.title}</p></div>
+                    <button onClick={()=>deleteItem(tab==='music'?'track':tab==='movies'?'movie':'software', i.id)} className="text-red-500"><Trash2/></button>
+                  </div>
+                ))}
               </div>
            </div>
-        )}
-      </div>
+           <div className="bg-slate-900 p-8 rounded-[40px] border border-white/5">
+              <h2 className="text-xl font-black uppercase mb-6 italic">Upload {tab}</h2>
+              <Upload category={tab} onSuccess={fetchAll} />
+           </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function UploadFormWithThumb({ type, onSuccess }: { type: string, onSuccess: () => void }) {
-  const [file, setFile] = useState<File | null>(null);
-  const [thumb, setThumb] = useState<File | null>(null);
+function Upload({ category, onSuccess }: any) {
+  const [f, setF] = useState<File|null>(null);
+  const [t, setT] = useState<File|null>(null);
   const [title, setTitle] = useState('');
   const [loading, setLoading] = useState(false);
 
   const start = async (e: any) => {
-    e.preventDefault();
-    if(!file || !thumb) return alert("File & Thumbnail Required!");
-    setLoading(true);
-    const fd = new FormData(); fd.append("file", file); fd.append("thumbnail", thumb); fd.append("title", title);
-    await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/${type}/upload`, {
+    e.preventDefault(); setLoading(true);
+    const fd = new FormData(); fd.append("file", f!); fd.append("thumbnail", t!); fd.append("title", title);
+    await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/${category}/upload`, {
       method: 'POST', headers: { Authorization: `Bearer ${publicAnonKey}` }, body: fd
     });
-    setLoading(false); setTitle(''); setFile(null); setThumb(null); onSuccess();
+    setLoading(false); setF(null); setT(null); setTitle(''); onSuccess();
   };
 
   return (
-    <form onSubmit={start} className="space-y-6">
-       <div className="grid grid-cols-2 gap-4 text-center">
-          <div className="border-2 border-dashed border-white/10 rounded-3xl p-6 bg-black/20">
-             <input type="file" accept="image/*" id={`t-${type}`} className="hidden" onChange={e => setThumb(e.target.files?.[0] || null)} />
-             <label htmlFor={`t-${type}`} className="cursor-pointer flex flex-col items-center gap-2">
-                <ImageIcon className={thumb ? "text-green-500" : "text-slate-600"}/>
-                <p className="text-[8px] font-black uppercase">{thumb ? thumb.name : "Thumb"}</p>
-             </label>
-          </div>
-          <div className="border-2 border-dashed border-white/10 rounded-3xl p-6 bg-black/20">
-             <input type="file" id={`f-${type}`} className="hidden" onChange={e => { setFile(e.target.files?.[0] || null); if(!title) setTitle(e.target.files?.[0].name.split('.')[0] || '') }} />
-             <label htmlFor={`f-${type}`} className="cursor-pointer flex flex-col items-center gap-2">
-                <RefreshCw className={file ? "text-orange-500" : "text-slate-600"}/>
-                <p className="text-[8px] font-black uppercase">{file ? file.name : "Media"}</p>
-             </label>
-          </div>
-       </div>
-       <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Title" className="w-full bg-black p-4 rounded-2xl border border-white/5 outline-none" required />
-       <button disabled={loading} className="w-full bg-orange-600 py-4 rounded-2xl font-black uppercase text-xs">{loading ? "Uploading..." : "Publish"}</button>
+    <form onSubmit={start} className="space-y-4">
+      <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Enter Title" className="w-full bg-black p-4 rounded-2xl border border-white/5" required />
+      <div className="grid grid-cols-2 gap-4">
+        <label className="bg-black p-6 rounded-2xl border border-dashed border-white/10 text-center cursor-pointer">
+          <ImageIcon className="mx-auto mb-2 text-slate-500"/>
+          <p className="text-[10px] font-black uppercase text-slate-400">{t ? t.name : "Thumbnail"}</p>
+          <input type="file" accept="image/*" className="hidden" onChange={e=>setT(e.target.files?.[0]!)} />
+        </label>
+        <label className="bg-black p-6 rounded-2xl border border-dashed border-white/10 text-center cursor-pointer">
+          <RefreshCw className="mx-auto mb-2 text-slate-500"/>
+          <p className="text-[10px] font-black uppercase text-slate-400">{f ? f.name : "Media File"}</p>
+          <input type="file" className="hidden" onChange={e=>setF(e.target.files?.[0]!)} />
+        </label>
+      </div>
+      <button disabled={loading} className="w-full bg-orange-600 py-4 rounded-2xl font-black uppercase">{loading ? "Uploading..." : "Publish Content"}</button>
     </form>
   );
 }
