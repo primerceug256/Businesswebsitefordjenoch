@@ -3,91 +3,84 @@ import { cors } from "npm:hono/cors";
 import * as auth from "./auth.tsx";
 import * as kv from "./kv_store.tsx";
 import * as music from "./music.tsx";
-import * as movies from "./movies.tsx";
-import * as software from "./software.tsx";
-import * as payments from "./payments.tsx";
 
 const app = new Hono();
 app.use("*", cors());
 
-// ==================== DELETE LOGIC ====================
-app.delete("/make-server-98d801c7/:type/delete/:id", async (c) => {
-  try {
-    const { type, id } = c.req.param();
-    const key = `${type}:${id}`;
-    const item = await kv.get(key);
-    if (!item) return c.json({ error: "Not found" }, 404);
-    if (item.fileName) await music.deleteTrack(id, item.fileName);
-    if (item.thumbPath) await music.deleteTrack(id, item.thumbPath);
-    await kv.del(key);
-    return c.json({ success: true });
-  } catch (e) { return c.json({ error: String(e) }, 500); }
+// ==================== USER PROFILE & SUBSCRIPTION ====================
+
+app.post("/make-server-98d801c7/auth/profile/update", async (c) => {
+  const fd = await c.req.formData();
+  const userId = fd.get("userId") as string;
+  const name = fd.get("name") as string;
+  const avatar = fd.get("avatar") as File;
+
+  const user = await kv.get(`user:${userId}`);
+  if (!user) return c.json({ error: "User not found" }, 404);
+
+  if (name) user.name = name;
+  if (avatar) {
+    const res = await music.uploadMusicFile(`avatars/${userId}`, await avatar.arrayBuffer(), avatar.type);
+    user.avatarUrl = res.publicUrl;
+  }
+
+  await kv.set(`user:${userId}`, user);
+  return c.json({ success: true, user });
 });
 
-// ==================== UPLOAD WITH THUMBNAILS ====================
-app.post("/make-server-98d801c7/:category/upload", async (c) => {
+// ==================== PAYMENT & ORDER SUBMISSION ====================
+
+app.post("/make-server-98d801c7/payments/submit", async (c) => {
   try {
-    const category = c.req.param("category");
     const fd = await c.req.formData();
-    const file = fd.get("file") as File;
-    const thumb = fd.get("thumbnail") as File;
-    const title = fd.get("title") as string;
+    const id = `pay-${Date.now()}`;
+    const proof = fd.get("proof") as File;
+    const res = await music.uploadMusicFile(`proofs/${id}`, await proof.arrayBuffer(), proof.type);
 
-    const media = await music.uploadMusicFile(file.name, await file.arrayBuffer(), file.type);
-    const thumbRes = await music.uploadMusicFile(`thumbs/${Date.now()}_${thumb.name}`, await thumb.arrayBuffer(), thumb.type);
-
-    const id = `item-${Date.now()}`;
-    const data = {
-      id, title, 
-      audioUrl: media.publicUrl, videoUrl: media.publicUrl, downloadUrl: media.publicUrl,
-      thumbnailUrl: thumbRes.publicUrl, fileName: media.fileName, thumbPath: thumbRes.fileName,
-      releaseDate: new Date().toLocaleDateString(),
-      platform: fd.get("platform") || "Windows", price: fd.get("price") || "0"
+    const paymentData = {
+      id,
+      userId: fd.get("userId"),
+      userName: fd.get("userName"),
+      items: fd.get("items"), // JSON string of cart
+      total: fd.get("total"),
+      transactionId: fd.get("transactionId"),
+      proofUrl: res.publicUrl,
+      status: "pending",
+      createdAt: new Date().toISOString()
     };
 
-    const prefix = category === 'music' ? 'track' : category === 'movies' ? 'movie' : 'software';
-    await kv.set(`${prefix}:${id}`, data);
+    await kv.set(`payment:${id}`, paymentData);
+    await kv.set(`payment:pending:${id}`, id);
     return c.json({ success: true });
-  } catch (e) { return c.json({ error: String(e) }, 500); }
+  } catch (e) { return c.json({ error: "Upload failed" }, 500); }
 });
 
-// ==================== DJ DROP ORDERS ====================
-app.post("/make-server-98d801c7/drops/order", async (c) => {
-  const fd = await c.req.formData();
-  const id = `drop-${Date.now()}`;
-  const proof = fd.get("proof") as File;
-  const res = await music.uploadMusicFile(`proofs/${id}`, await proof.arrayBuffer(), proof.type);
-  const order = { id, userId: fd.get("userId"), djName: fd.get("djName"), contact: fd.get("contact"), transactionId: fd.get("transactionId"), proofUrl: res.publicUrl, status: "pending", dropUrl: null };
-  await kv.set(`drop_order:${id}`, order);
+// Admin Approve Payment (Unlocks content)
+app.post("/make-server-98d801c7/admin/approve-payment", async (c) => {
+  const { paymentId, durationDays } = await c.req.json();
+  const pay = await kv.get(`payment:${paymentId}`);
+  const user = await kv.get(`user:${pay.userId}`);
+
+  if (user) {
+    const now = new Date();
+    const expires = new Date(now.getTime() + (durationDays * 24 * 60 * 60 * 1000));
+    user.subscription = { 
+        active: true, 
+        expiresAt: expires.toISOString(),
+        plan: "Premium" 
+    };
+    await kv.set(`user:${pay.userId}`, user);
+    await kv.del(`payment:pending:${paymentId}`);
+    pay.status = "approved";
+    await kv.set(`payment:${paymentId}`, pay);
+  }
   return c.json({ success: true });
 });
 
-app.get("/make-server-98d801c7/drops/list", async (c) => c.json(await kv.getByPrefix("drop_order:")));
-
-app.get("/make-server-98d801c7/drops/user/:userId", async (c) => {
-  const all = await kv.getByPrefix("drop_order:");
-  return c.json(all.filter((d:any) => d.userId === c.req.param("userId")));
+// Fix for Movie 404: Ensure list is returned as object
+app.get("/make-server-98d801c7/movies/list", async (c) => {
+  const movies = await kv.getByPrefix("movie:");
+  return c.json({ movies: movies || [] });
 });
-
-app.post("/make-server-98d801c7/admin/drops/status", async (c) => {
-  const { id, status } = await c.req.json();
-  const order = await kv.get(`drop_order:${id}`);
-  if(order) { order.status = status; await kv.set(`drop_order:${id}`, order); }
-  return c.json({ success: true });
-});
-
-app.post("/make-server-98d801c7/admin/drops/send", async (c) => {
-  const fd = await c.req.formData();
-  const id = fd.get("id") as string;
-  const file = fd.get("file") as File;
-  const res = await music.uploadMusicFile(`final/${id}`, await file.arrayBuffer(), file.type);
-  const order = await kv.get(`drop_order:${id}`);
-  if(order) { order.status = "completed"; order.dropUrl = res.publicUrl; await kv.set(`drop_order:${id}`, order); }
-  return c.json({ success: true });
-});
-
-app.get("/make-server-98d801c7/music/tracks", async (c) => c.json({ tracks: await kv.getByPrefix("track:") }));
-app.get("/make-server-98d801c7/movies/list", async (c) => c.json({ movies: await kv.getByPrefix("movie:") }));
-app.get("/make-server-98d801c7/software/list", async (c) => c.json({ software: await kv.getByPrefix("software:") }));
 
 Deno.serve(app.fetch);
