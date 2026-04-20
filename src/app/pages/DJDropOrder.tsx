@@ -27,7 +27,7 @@ export default function DJDropOrder() {
       body.append("transactionId", fd.transactionId);
       body.append("proof", proof);
 
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/drops/order`, {
+      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/drops/order`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${publicAnonKey}` },
         body: body

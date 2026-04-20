@@ -26,27 +26,27 @@ export default function AdminDashboard() {
     const headers = { Authorization: `Bearer ${publicAnonKey}` };
     try {
       // 1. Fetch Approvals (Pending Payments)
-      const appRes = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/admin/pending`, { headers });
+      const appRes = await fetch(`https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/admin/pending`, { headers });
       const appData = await appRes.json();
       setApprovals(appData || []);
 
       // 2. Fetch DJ Drops
-      const dropRes = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/drops/list`, { headers });
+      const dropRes = await fetch(`https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/drops/list`, { headers });
       const dropData = await dropRes.json();
-      setDrops(dropData || []);
+      setDrops(dropData.drops || []);
 
       // 3. Fetch Music
-      const musicRes = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/music/tracks`, { headers });
+      const musicRes = await fetch(`https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/music/tracks`, { headers });
       const musicData = await musicRes.json();
       setMusic(musicData.tracks || []);
 
       // 4. Fetch Movies
-      const movieRes = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/movies/list`, { headers });
+      const movieRes = await fetch(`https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/movies/list`, { headers });
       const movieData = await movieRes.json();
       setMovies(movieData.movies || []);
 
       // 5. Fetch Software
-      const swRes = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/software/list`, { headers });
+      const swRes = await fetch(`https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/software/list`, { headers });
       const swData = await swRes.json();
       setSoftware(swData.software || []);
 
@@ -65,7 +65,7 @@ export default function AdminDashboard() {
   const handleApprovalAction = async (paymentId: string, action: 'accept' | 'reject', userId: string, plan: string) => {
     if (!confirm(`Confirm ${action}?`)) return;
     setLoading(true);
-    await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/admin/process-approval`, {
+    await fetch(`https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/admin/process-approval`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${publicAnonKey}` },
       body: JSON.stringify({ paymentId, action, userId, planType: plan })
@@ -73,10 +73,21 @@ export default function AdminDashboard() {
     fetchAllData();
   };
 
+  const handleDropAction = async (dropId: string, action: 'accept' | 'reject') => {
+    if (!confirm(`Confirm ${action} for this DJ drop?`)) return;
+    setLoading(true);
+    await fetch(`https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/admin/process-approval`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${publicAnonKey}` },
+      body: JSON.stringify({ dropId, action, requestType: 'drop' })
+    });
+    fetchAllData();
+  };
+
   // Handle Deletions
   const deleteItem = async (type: string, id: string) => {
     if (!confirm("Permanent Delete? This cannot be undone.")) return;
-    await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/${type}/delete/${id}`, { 
+    await fetch(`https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/${type}/delete/${id}`, { 
       method: 'DELETE', 
       headers: { Authorization: `Bearer ${publicAnonKey}` } 
     });
@@ -144,10 +155,12 @@ export default function AdminDashboard() {
                     </div>
                     <div>
                       <p className="font-black text-2xl uppercase italic tracking-tighter">{p.userName || 'Customer'}</p>
+                      {p.userCode && <p className="text-[10px] text-slate-400 uppercase tracking-[0.25em]">User Code: <span className="font-mono text-white">{p.userCode}</span></p>}
                       <p className="text-xs text-slate-500 font-bold mt-1">Transaction: <span className="text-orange-500 font-mono">{p.transactionId}</span></p>
+                      <p className="text-xs text-slate-400 mt-3">Request: {typeof p.items === 'string' ? p.items : JSON.stringify(p.items)}</p>
                       <div className="flex gap-2 mt-4">
                           <span className="bg-green-600/10 text-green-500 text-[10px] px-4 py-2 rounded-full font-black uppercase border border-green-500/10">UGX {p.total}</span>
-                          <span className="bg-blue-600/10 text-blue-500 text-[10px] px-4 py-2 rounded-full font-black uppercase border border-blue-500/10">{p.items}</span>
+                          <span className="bg-blue-600/10 text-blue-500 text-[10px] px-4 py-2 rounded-full font-black uppercase border border-blue-500/10">{typeof p.items === 'string' ? p.items : JSON.stringify(p.items)}</span>
                       </div>
                     </div>
                   </div>
@@ -171,13 +184,21 @@ export default function AdminDashboard() {
         {tab === 'dj drops' && (
           <div className="grid gap-4">
             {drops.map((d: any) => (
-              <div key={d.id} className="bg-slate-900 p-8 rounded-[48px] border border-white/5 flex justify-between items-center">
-                <div>
+              <div key={d.id} className="bg-slate-900 p-8 rounded-[48px] border border-white/5 flex flex-col lg:flex-row justify-between items-start gap-8">
+                <div className="space-y-3">
                   <p className="font-black text-2xl text-orange-500 italic uppercase tracking-tighter">{d.djName}</p>
-                  <p className="text-[10px] text-slate-500 font-bold uppercase mt-1">Status: {d.status}</p>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase">Status: {d.status}</p>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-[0.2em]">Request ID: <span className="font-mono text-white">{d.id}</span></p>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-[0.2em]">User Code: <span className="font-mono text-white">{d.userCode || d.userId}</span></p>
+                  {d.transactionId && <p className="text-[10px] text-slate-500">Txn: {d.transactionId}</p>}
+                  {d.proofUrl && (
+                    <a href={d.proofUrl} target="_blank" rel="noreferrer" className="text-xs text-orange-400 underline">View Proof</a>
+                  )}
                 </div>
                 <div className="flex gap-3">
-                  <button onClick={() => deleteItem('drop_order', d.id)} className="p-4 bg-red-600/10 text-red-500 rounded-2xl hover:bg-red-600 hover:text-white transition-all"><Trash2 size={20}/></button>
+                  <button onClick={() => handleDropAction(d.id, 'accept')} className="bg-green-600 p-4 rounded-2xl text-white hover:bg-green-500 transition-all"><Check size={20}/></button>
+                  <button onClick={() => handleDropAction(d.id, 'reject')} className="bg-red-600 p-4 rounded-2xl text-white hover:bg-red-500 transition-all"><X size={20}/></button>
+                  <button onClick={() => deleteItem('drop', d.id)} className="p-4 bg-red-600/10 text-red-500 rounded-2xl hover:bg-red-600 hover:text-white transition-all"><Trash2 size={20}/></button>
                 </div>
               </div>
             ))}

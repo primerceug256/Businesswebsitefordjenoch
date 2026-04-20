@@ -3,6 +3,7 @@ import * as kv from "./kv_store.tsx";
 export interface Payment {
   id: string;
   userId: string;
+  userCode?: string;
   userName: string;
   items: string;
   total: number;
@@ -18,13 +19,15 @@ export async function submitPayment(
   items: string,
   total: number,
   transactionId: string,
-  proofUrl?: string
+  proofUrl?: string,
+  userCode?: string
 ): Promise<Payment> {
   const paymentId = `payment-${Date.now()}`;
 
   const payment: Payment = {
     id: paymentId,
     userId,
+    userCode,
     userName,
     items,
     total,

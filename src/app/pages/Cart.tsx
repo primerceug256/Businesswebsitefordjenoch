@@ -21,6 +21,7 @@ export default function Cart() {
 
     const fd = new FormData();
     fd.append("userId", user?.id || "");
+    fd.append("userCode", user?.code || user?.id || "");
     fd.append("userName", user?.name || user?.email || "");
     fd.append("transactionId", tid);
     fd.append("proof", proof);
