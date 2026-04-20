@@ -52,7 +52,12 @@ export function MovieUploadForm({ onSuccess }: { onSuccess: () => void }) {
             setUploadSuccess(false);
           }, 3000);
         } else {
-          setError("Upload failed server-side");
+          try {
+            const resp = JSON.parse(xhr.responseText);
+            setError(resp.error || `Upload failed with status ${xhr.status}`);
+          } catch (err) {
+            setError(`Server error: ${xhr.status} ${xhr.statusText}`);
+          }
           setUploading(false);
         }
       });

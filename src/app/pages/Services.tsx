@@ -24,7 +24,10 @@ export default function Services() {
             <p className="text-gray-400 mb-6">
               Personalized voice drops for your brand, radio sets, and live shows.
             </p>
-            <p className="text-orange-600 font-bold text-xl">8,000 UGX</p>
+            <p className="text-orange-600 font-bold text-xl mb-4">8,000 UGX</p>
+            <a href="/dj-drops" className="inline-block bg-orange-600 hover:bg-orange-700 text-white font-bold px-6 py-2 rounded-full transition-all">
+              Order Now
+            </a>
           </div>
 
           <div className="bg-gray-900 p-8 rounded-2xl">

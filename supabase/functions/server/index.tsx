@@ -132,6 +132,34 @@ app.post("/make-98d801c7-music/drops/order", async (c) => {
   }
 });
 
+app.post("/make-98d801c7-music/web-development/order", async (c) => {
+  try {
+    const fd = await c.req.formData();
+    const id = `webdev-${Date.now()}`;
+
+    const webDevInquiry = {
+      id,
+      userId: fd.get("userId"),
+      name: fd.get("name"),
+      email: fd.get("email"),
+      phone: fd.get("phone"),
+      websiteType: fd.get("websiteType"),
+      features: fd.get("features"),
+      budget: fd.get("budget"),
+      timeline: fd.get("timeline"),
+      description: fd.get("description"),
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    };
+
+    await kv.set(`webdev:${id}`, webDevInquiry);
+    await kv.set(`webdev:pending:${id}`, id);
+    return c.json({ success: true });
+  } catch (e) {
+    return c.json({ error: "Fail" }, 500);
+  }
+});
+
 app.get("/make-98d801c7-music/drops/list", async (c) => {
   const drops = (await kv.getByPrefix("drop:")).filter((drop: any) => drop && typeof drop === 'object' && 'status' in drop);
   return c.json({ drops });
@@ -151,14 +179,31 @@ app.post("/make-98d801c7-music/:category/upload", async (c) => {
   const thumb = fd.get("thumbnail") as File;
   
   const media = await music.uploadMusicFile(file.name, await file.arrayBuffer(), file.type);
-  const thumbImg = await music.uploadMusicFile(`thumbs/${Date.now()}`, await thumb.arrayBuffer(), thumb.type);
+  
+  let thumbImg = null;
+  if (thumb) {
+    thumbImg = await music.uploadMusicFile(`thumbs/${Date.now()}`, await thumb.arrayBuffer(), thumb.type);
+  }
 
   const id = `item-${Date.now()}`;
   const data = {
     id, title: fd.get("title"), 
     audioUrl: media.publicUrl, videoUrl: media.publicUrl, downloadUrl: media.publicUrl,
-    thumbnailUrl: thumbImg.publicUrl, fileName: media.fileName, thumbPath: thumbImg.fileName,
-    platform: fd.get("platform") || "Windows", price: fd.get("price") || "0"
+    thumbnailUrl: thumbImg ? thumbImg.publicUrl : null, 
+    fileName: media.fileName, 
+    thumbPath: thumbImg ? thumbImg.fileName : null,
+    platform: fd.get("platform") || "Windows", 
+    price: fd.get("price") || "0",
+    // Add additional fields for movies
+    description: fd.get("description") || "",
+    genre: fd.get("genre") || "",
+    duration: fd.get("duration") || "",
+    releaseYear: fd.get("releaseYear") || "",
+    quality: fd.get("quality") || "",
+    // Add music-specific fields
+    artist: fd.get("artist") || "",
+    releaseDate: fd.get("releaseDate") || "",
+    mediaType: fd.get("mediaType") || "audio"
   };
   const prefix = category === 'music' ? 'track' : category === 'movies' ? 'movie' : 'software';
   await kv.set(`${prefix}:${id}`, data);

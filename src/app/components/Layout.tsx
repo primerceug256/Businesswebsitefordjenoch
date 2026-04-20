@@ -3,6 +3,7 @@ import { ShoppingCart, LogOut, Music, Film, Download, ShieldCheck, Menu, X, Libr
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useState } from 'react';
+import { AdminUploadPanel } from './AdminUploadPanel';
 
 export default function Layout() {
   const { user, isAdmin, logout } = useAuth();
@@ -52,6 +53,7 @@ export default function Layout() {
         )}
       </header>
       <main className="flex-grow"><Outlet /></main>
+      <AdminUploadPanel />
     </div>
   );
 }

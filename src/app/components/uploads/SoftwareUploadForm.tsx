@@ -31,7 +31,13 @@ export function SoftwareUploadForm({ onSuccess }: { onSuccess: () => void }) {
           setSuccess(true); setUploading(false); setFile(null);
           setTimeout(() => { onSuccess(); setSuccess(false); }, 3000);
         } else {
-          setErr("Upload failed on server"); setUploading(false);
+          try {
+            const resp = JSON.parse(xhr.responseText);
+            setErr(resp.error || `Upload failed with status ${xhr.status}`);
+          } catch (ex) {
+            setErr(`Server error: ${xhr.status} ${xhr.statusText}`);
+          }
+          setUploading(false);
         }
       });
       xhr.open("POST", `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/software/upload`);
