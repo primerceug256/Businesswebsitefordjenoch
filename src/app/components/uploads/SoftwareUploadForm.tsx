@@ -34,7 +34,7 @@ export function SoftwareUploadForm({ onSuccess }: { onSuccess: () => void }) {
           setErr("Upload failed on server"); setUploading(false);
         }
       });
-      xhr.open("POST", `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/software/upload`);
+      xhr.open("POST", `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/software/upload`);
       xhr.setRequestHeader("Authorization", `Bearer ${publicAnonKey}`);
       xhr.send(data);
     } catch (ex) { setErr("Network error"); setUploading(false); }

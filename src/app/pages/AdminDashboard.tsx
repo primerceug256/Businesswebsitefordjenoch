@@ -265,7 +265,7 @@ function UploadForm({ category, onSuccess }: any) {
     fd.append("title", title);
     
     try {
-      await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/${category}/upload`, {
+      await fetch(`https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/${category}/upload`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${publicAnonKey}` },
         body: fd

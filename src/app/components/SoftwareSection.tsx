@@ -90,7 +90,7 @@ export function SoftwareSection() {
   const fetchSoftware = async () => {
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/software/list`,
+        `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/software/list`,
         {
           headers: {
             Authorization: `Bearer ${publicAnonKey}`,

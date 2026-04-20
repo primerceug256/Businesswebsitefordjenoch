@@ -70,7 +70,7 @@ export function MusicUploadForm({ onSuccess }: { onSuccess: () => void }) {
         setUploading(false);
       });
 
-      xhr.open("POST", `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/music/upload`);
+      xhr.open("POST", `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/music/upload`);
       xhr.setRequestHeader("Authorization", `Bearer ${publicAnonKey}`);
       xhr.send(data);
     } catch (err) {
