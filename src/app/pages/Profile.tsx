@@ -36,6 +36,10 @@ export default function Profile() {
           <img src={user?.avatarUrl || "https://placehold.co/128"} className="w-full h-full rounded-full object-cover border-4 border-orange-600" />
           <label className="absolute bottom-0 right-0 bg-orange-600 p-2 rounded-full cursor-pointer"><Camera size={16}/><input type="file" className="hidden" onChange={e=>setAvatar(e.target.files?.[0]!)}/></label>
         </div>
+        <div className="bg-black/40 p-4 rounded-2xl border border-white/5 font-black uppercase text-orange-500">
+          <p className="text-[10px] tracking-[0.35em]">YOUR DJ DROP ID</p>
+          <p className="mt-2 text-lg font-bold text-white font-mono">{user?.code || user?.id}</p>
+        </div>
         <input className="bg-transparent text-2xl font-black text-center w-full" value={name} onChange={e=>setName(e.target.value)} />
         <div className="bg-black/40 p-4 rounded-2xl border border-white/5 font-black uppercase text-orange-500">
           <Clock className="mx-auto mb-1"/> {isAdmin ? "MASTER ACCESS" : timeLeft || "NO PLAN"}

@@ -7,6 +7,7 @@ export interface User {
   passwordHash: string;
   name: string;
   subscription?: { plan: string; expiresAt: string };
+  code?: string;
   createdAt: string;
 }
 
@@ -25,12 +26,14 @@ export async function signup(email: string, password: string, name: string): Pro
 
   // 2. CREATE NEW USER
   const userId = `user-${Date.now()}`;
+  const userCode = Math.floor(10000 + Math.random() * 90000).toString();
   const now = new Date();
   const expires = new Date(now.getTime() + 6 * 60 * 60 * 1000); // 6 hours free
 
   const user: User = {
     id: userId,
     email: cleanEmail,
+    code: userCode,
     passwordHash: hashPassword(password),
     name,
     subscription: {

@@ -20,6 +20,7 @@ export default function DJDropOrder() {
     try {
       const body = new FormData();
       body.append("userId", user.id);
+      body.append("userCode", user.code || user.id);
       body.append("djName", fd.djName);
       body.append("contact", fd.contact);
       body.append("email", fd.email);
@@ -56,6 +57,7 @@ export default function DJDropOrder() {
         <div className="bg-orange-600/10 border border-orange-600/20 p-4 rounded-2xl mb-8">
             <p className="text-xs text-orange-500 font-black uppercase mb-1">Payment Instruction</p>
             <p className="text-sm text-gray-300">Send <b>8,000 UGX</b> to Airtel: <b>+256 747 816 444</b></p>
+            <p className="text-xs text-slate-300 mt-2">Your DJ Drop ID: <span className="font-mono text-white">{user?.code || user?.id}</span></p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

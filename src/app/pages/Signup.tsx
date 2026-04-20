@@ -19,7 +19,7 @@ export default function Signup() {
     setLoading(true);
     try {
       await auth.signup(email, password, name);
-      navigate('/');
+      navigate('/profile');
     } catch (err: any) {
       setError(err.message || 'Signup failed');
     } finally {
