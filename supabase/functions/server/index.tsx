@@ -7,48 +7,70 @@ import * as music from "./music.tsx";
 const app = new Hono();
 app.use("*", cors());
 
-// ==================== PROFILE & SUBSCRIPTION ====================
-app.post("/make-server-98d801c7/profile/update", async (c) => {
-  const fd = await c.req.formData();
-  const userId = fd.get("userId") as string;
-  const user = await kv.get(`user:${userId}`);
-  if (!user) return c.json({ error: "User not found" }, 404);
+// ==================== DJ DROP ORDERS (FIXED) ====================
+app.post("/make-server-98d801c7/drops/order", async (c) => {
+  try {
+    const fd = await c.req.formData();
+    const id = `drop-${Date.now()}`;
+    
+    // Check if proof file exists
+    const proofFile = fd.get("proof") as File;
+    let proofUrl = "";
+    
+    if (proofFile) {
+      const arrayBuffer = await proofFile.arrayBuffer();
+      const res = await music.uploadMusicFile(`proofs/${id}_${proofFile.name}`, arrayBuffer, proofFile.type);
+      proofUrl = res.publicUrl;
+    }
 
-  user.name = fd.get("name") || user.name;
-  const avatar = fd.get("avatar") as File;
-  if (avatar) {
-    const res = await music.uploadMusicFile(`avatars/${userId}`, await avatar.arrayBuffer(), avatar.type);
-    user.avatarUrl = res.publicUrl;
+    const orderData = {
+      id,
+      userId: fd.get("userId"),
+      djName: fd.get("djName"),
+      contact: fd.get("contact"),
+      email: fd.get("email"), // Now included
+      transactionId: fd.get("transactionId"),
+      proofUrl: proofUrl,
+      status: "pending",
+      dropUrl: null,
+      createdAt: new Date().toISOString()
+    };
+
+    await kv.set(`drop_order:${id}`, orderData);
+    return c.json({ success: true, id });
+  } catch (error) {
+    console.error("Drop Order Error:", error);
+    return c.json({ error: "Failed to process order" }, 500);
   }
-  await kv.set(`user:${userId}`, user);
-  return c.json({ success: true, user });
 });
 
-// ==================== PAYMENT SUBMISSION ====================
+// ==================== MOVIE LIST (FIXED 404) ====================
+app.get("/make-server-98d801c7/movies/list", async (c) => {
+  const allMovies = await kv.getByPrefix("movie:");
+  // Always return an object with a movies array to prevent frontend crashes
+  return c.json({ movies: allMovies || [] });
+});
+
+// ==================== PAYMENTS (FIXED SUBMISSION) ====================
 app.post("/make-server-98d801c7/payments/submit", async (c) => {
   try {
     const fd = await c.req.formData();
     const id = `pay-${Date.now()}`;
     const proof = fd.get("proof") as File;
-    const res = await music.uploadMusicFile(`proofs/${id}`, await proof.arrayBuffer(), proof.type);
+    const arrayBuffer = await proof.arrayBuffer();
+    const res = await music.uploadMusicFile(`proofs/${id}`, arrayBuffer, proof.type);
 
-    const paymentData = {
+    const data = {
       id, userId: fd.get("userId"), userName: fd.get("userName"),
       items: fd.get("items"), total: fd.get("total"),
       transactionId: fd.get("transactionId"), proofUrl: res.publicUrl,
-      status: "pending", createdAt: new Date().toISOString()
+      status: "pending"
     };
 
-    await kv.set(`payment:${id}`, paymentData);
+    await kv.set(`payment:${id}`, data);
     await kv.set(`payment:pending:${id}`, id);
     return c.json({ success: true });
-  } catch (e) { return c.json({ error: "Upload failed" }, 500); }
-});
-
-// ==================== MOVIE LIST FIX ====================
-app.get("/make-server-98d801c7/movies/list", async (c) => {
-  const movies = await kv.getByPrefix("movie:");
-  return c.json({ movies: movies || [] });
+  } catch (e) { return c.json({ error: "Server Error" }, 500); }
 });
 
 Deno.serve(app.fetch);
