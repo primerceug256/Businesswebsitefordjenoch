@@ -3,7 +3,6 @@ import { Check, Zap, Crown, Diamond, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router';
 
-// The 'unlimited' id here maps to the 36500-day logic in your Admin Dashboard approve function
 const PLANS = [
   { id: 'spark', name: 'Spark Pass', price: 500, duration: '2 hours', icon: Zap, color: 'orange' },
   { id: 'blaze', name: 'Blaze Pass', price: 800, duration: '6 hours', icon: Zap, color: 'orange' },
@@ -25,12 +24,10 @@ export default function Subscription() {
   const [selectedPlan, setSelectedPlan] = useState<string>('');
 
   const handleSelectPlan = (planId: string) => {
-    // If you are admin, you don't need to go to cart
     if (isAdmin) {
-      alert("You are the Admin. You already have Lifetime Master Access!");
+      alert("Admin Master Access is already active!");
       return;
     }
-
     if (!user) {
       navigate('/signup');
       return;
@@ -43,21 +40,15 @@ export default function Subscription() {
     <div className="bg-black text-white min-h-screen py-16">
       <div className="container mx-auto px-4">
         
-        {/* Admin Master Access Alert */}
+        {/* Admin Banner */}
         {isAdmin && (
-          <div className="max-w-4xl mx-auto mb-12 bg-orange-600/20 border border-orange-600 rounded-3xl p-8 flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
-            <div className="bg-orange-600 p-4 rounded-full shadow-2xl">
+          <div className="max-w-4xl mx-auto mb-12 bg-orange-600/20 border border-orange-600 rounded-3xl p-8 flex flex-col md:flex-row items-center gap-6">
+            <div className="bg-orange-600 p-4 rounded-full">
               <ShieldCheck size={40} className="text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-black text-orange-500 uppercase tracking-tighter">Admin Master Access</h2>
-              <p className="text-gray-300 mt-1">You are logged in as <b>{user?.email}</b>. All features, movies, music, and software downloads are automatically unlocked for you forever.</p>
-              <button 
-                onClick={() => navigate('/admin')}
-                className="mt-4 bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded-full font-bold text-sm transition-all"
-              >
-                Go to Admin Dashboard
-              </button>
+              <h2 className="text-2xl font-black text-orange-500 uppercase">Admin Master Access</h2>
+              <p className="text-gray-300">All content is automatically unlocked for you forever.</p>
             </div>
           </div>
         )}
@@ -67,20 +58,71 @@ export default function Subscription() {
             Choose Your Plan
           </h1>
           <p className="text-xl text-gray-400">
-            {isAdmin 
-              ? "Previewing the plans available to your customers." 
-              : "New users get 6 hours free! Special offers on public holidays & July 20th."
-            }
+            {isAdmin ? "Previewing customer plans." : "New users get 6 hours free! Special holiday offers available."}
           </p>
         </div>
 
+        {/* Plans Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {PLANS.map((plan) => {
             const Icon = plan.icon;
             return (
               <div
                 key={plan.id}
-                className={`relative bg-gray-900 rounded-2xl p-6 transition-all duration-300 hover:scale-105 border border-white/5 hover:border-orange-500/50 ${
-                  plan.featured ? 'ring-4 ring-purple-600 shadow-[0_0_30px_rgba(147,51,234,0.3)]' : ''
+                className={`relative bg-gray-900 rounded-2xl p-6 transition-all border border-white/5 ${
+                  plan.featured ? 'ring-4 ring-purple-600 shadow-2xl' : ''
                 }`}
               >
+                {plan.featured && (
+                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-purple-600 px-4 py-1 rounded-full text-xs font-bold uppercase">
+                    Lifetime
+                  </div>
+                )}
+
+                <div className={`w-12 h-12 rounded-full bg-${plan.color}-600 flex items-center justify-center mb-4`}>
+                  <Icon size={24} className="text-white" />
+                </div>
+
+                <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
+                <div className="mb-4">
+                  <span className="text-4xl font-bold text-orange-600">{plan.price.toLocaleString()}</span>
+                  <span className="text-gray-400 text-sm ml-1">UGX</span>
+                </div>
+                <p className="text-gray-400 mb-6 text-xs uppercase tracking-widest">{plan.duration}</p>
+
+                <ul className="space-y-3 mb-8">
+                  <li className="flex items-center gap-2 text-sm text-gray-300">
+                    <Check size={16} className="text-green-500" /> HD Streaming
+                  </li>
+                  <li className="flex items-center gap-2 text-sm text-gray-300">
+                    <Check size={16} className="text-green-500" /> All Devices
+                  </li>
+                  {plan.download && (
+                    <li className="flex items-center gap-2 text-sm text-green-400 font-bold">
+                      <Check size={16} className="text-green-500" /> Downloads Enabled
+                    </li>
+                  )}
+                </ul>
+
+                <button
+                  onClick={() => handleSelectPlan(plan.id)}
+                  disabled={isAdmin}
+                  className={`w-full py-3 rounded-xl font-black uppercase tracking-widest transition-all ${
+                    isAdmin 
+                    ? 'bg-gray-800 text-gray-500' 
+                    : `bg-${plan.color}-600 hover:opacity-90`
+                  }`}
+                >
+                  {isAdmin ? "Admin Active" : "Select Plan"}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Special Offers */}
+        <div className="mt-16 bg-gray-900 rounded-3xl p-10 border border-white/5">
+          <h2 className="text-3xl font-black mb-10 text-center uppercase tracking-tighter">🎁 Free Promotions</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+            <div className="bg-black/40 p-8 rounded-2xl border border-white/5">
+              <div className="text-4xl mb-4">🆕</div>
