@@ -27,11 +27,9 @@ app.delete("/make-server-98d801c7/:type/delete/:id", async (c) => {
     if (!item) return c.json({ error: "Not found" }, 404);
 
     if (item.fileName) {
-      // Call standard storage delete
       await music.deleteTrack(id, item.fileName);
       if(item.thumbPath) await music.deleteTrack(id, item.thumbPath);
     }
-
     await kv.del(key);
     return c.json({ success: true });
   } catch (e) { return c.json({ error: String(e) }, 500); }
@@ -46,9 +44,7 @@ app.post("/make-server-98d801c7/:category/upload", async (c) => {
     const thumb = formData.get("thumbnail") as File;
     const title = formData.get("title") as string;
 
-    // Upload Media
     const media = await music.uploadMusicFile(file.name, await file.arrayBuffer(), file.type);
-    // Upload Thumbnail
     const thumbFile = await music.uploadMusicFile(`thumbs/${Date.now()}_${thumb.name}`, await thumb.arrayBuffer(), thumb.type);
 
     const id = `item-${Date.now()}`;
@@ -111,7 +107,6 @@ app.post("/make-server-98d801c7/admin/drops/send", async (c) => {
   return c.json({ success: true });
 });
 
-// Standard lists
 app.get("/make-server-98d801c7/music/tracks", async (c) => c.json({ tracks: await kv.getByPrefix("track:") }));
 app.get("/make-server-98d801c7/movies/list", async (c) => c.json({ movies: await kv.getByPrefix("movie:") }));
 app.get("/make-server-98d801c7/software/list", async (c) => c.json({ software: await kv.getByPrefix("software:") }));
