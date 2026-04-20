@@ -9,6 +9,7 @@ import Cart from './pages/Cart';
 import Subscription from './pages/Subscription';
 import MyLibrary from './pages/MyLibrary';
 import DJDropOrder from './pages/DJDropOrder';
+import WebDevelopment from './pages/WebDevelopment';
 import AdminDashboard from './pages/AdminDashboard';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -24,6 +25,7 @@ export const router = createBrowserRouter([
       // THIS IS THE FIX FOR THE 404 ERROR
       { path: 'movies/watch/:id', Component: MoviePlayer }, 
       { path: 'software', Component: Software },
+      { path: 'web-development', Component: WebDevelopment },
       { path: 'cart', Component: Cart },
       { path: 'subscription', Component: Subscription },
       { path: 'my-library', Component: MyLibrary },

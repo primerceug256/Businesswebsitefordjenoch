@@ -99,6 +99,42 @@ export default function Home() {
         </div>
       </section>
 
+      {/* --- WEBSITE DEVELOPMENT SECTION --- */}
+      <section className="py-20 bg-black text-white">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+            <div>
+              <span className="text-sm uppercase tracking-[.35em] text-orange-400 font-bold">New Offer</span>
+              <h2 className="text-4xl font-black mt-4">Website Development for DJs</h2>
+              <p className="text-slate-400 mt-6 text-lg leading-relaxed">
+                Get a custom website for your DJ brand, online music store, event promotion, and bookings. We build clean, responsive pages that help you sell drops, software, and mixes.
+              </p>
+              <ul className="mt-8 space-y-3 text-slate-300">
+                <li>• Responsive website design</li>
+                <li>• Music and drops catalog pages</li>
+                <li>• Payment and contact integration</li>
+                <li>• Fast launch for your DJ business</li>
+              </ul>
+              <div className="mt-8">
+                <a href="/web-development" className="inline-block bg-orange-600 hover:bg-orange-700 text-white font-bold px-7 py-4 rounded-full transition-all">
+                  Request a Website
+                </a>
+              </div>
+            </div>
+            <div className="rounded-3xl overflow-hidden border border-white/10 bg-slate-900 p-6">
+              <div className="bg-gradient-to-br from-orange-600 to-pink-600 p-8 rounded-3xl text-white">
+                <h3 className="text-2xl font-bold mb-4">Application Development</h3>
+                <p className="text-slate-100 mb-4">Coming soon — mobile and web apps to grow your DJ business.</p>
+                <div className="rounded-3xl bg-black/30 p-6">
+                  <p className="text-sm uppercase tracking-[.35em] text-orange-300 font-bold">Stay tuned</p>
+                  <p className="mt-3 text-slate-100 text-sm">We’re preparing app development services for future releases.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* --- NEW TESTIMONIALS SECTION --- */}
       <Testimonials />
 
