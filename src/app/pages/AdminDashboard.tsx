@@ -17,9 +17,9 @@ export default function AdminDashboard() {
     const h = { Authorization: `Bearer ${publicAnonKey}` };
     try {
       const [muR, moR, swR, drR] = await Promise.all([
-        fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/music/tracks`, { headers: h }),
-        fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/movies/list`, { headers: h }),
-        fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/software/list`, { headers: h }),
+        fetch(`https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/music/tracks`, { headers: h }),
+        fetch(`https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/movies/list`, { headers: h }),
+        fetch(`https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/software/list`, { headers: h }),
         fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/drops/list`, { headers: h })
       ]);
       setContent({ music: (await muR.json()).tracks || [], movies: (await moR.json()).movies || [], software: (await swR.json()).software || [] });
@@ -114,7 +114,7 @@ function Upload({ category, onSuccess }: any) {
   const start = async (e: any) => {
     e.preventDefault(); setLoading(true);
     const fd = new FormData(); fd.append("file", f!); fd.append("thumbnail", t!); fd.append("title", title);
-    await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/${category}/upload`, {
+    await fetch(`https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/${category}/upload`, {
       method: 'POST', headers: { Authorization: `Bearer ${publicAnonKey}` }, body: fd
     });
     setLoading(false); setF(null); setT(null); setTitle(''); onSuccess();

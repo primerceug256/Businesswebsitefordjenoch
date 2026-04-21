@@ -2,6 +2,10 @@ import { Hono } from "npm:hono";
 import { cors } from "npm:hono/cors";
 import * as kv from "./kv_store.tsx";
 import * as music from "./music.tsx";
+import * as movies from "./movies.tsx";
+import * as software from "./software.tsx";
+import * as movies from "./movies.tsx";
+import * as software from "./software.tsx";
 import * as payments from "./payments.tsx";
 import * as email from "./email.tsx";
 import * as receipts from "./receipts.tsx";
@@ -595,9 +599,7 @@ app.get("/make-98d801c7-music/receipts/:receiptId", async (c) => {
 });
 
 // ==================== CONTENT ENDPOINTS ====================
-
-// MUSIC TRACKS LIST
-app.get("/make-server-98d801c7/music/tracks", async (c) => {
+const handleMusicTracks = async (c: any) => {
   try {
     const tracks = await kv.getByPrefix("track:");
     return c.json({ 
@@ -611,15 +613,19 @@ app.get("/make-server-98d801c7/music/tracks", async (c) => {
       tracks: [] 
     }, 500);
   }
-});
+};
+
+app.get("/music/tracks", handleMusicTracks);
+app.get("/make-98d801c7-music/music/tracks", handleMusicTracks);
+app.get("/make-server-98d801c7/music/tracks", handleMusicTracks);
 
 // MOVIE LIST
-app.get("/make-98d801c7-music/movies/list", async (c) => {
+const handleMoviesList = async (c: any) => {
   try {
-    const movies = await kv.getByPrefix("movie:");
+    const moviesList = await kv.getByPrefix("movie:");
     return c.json({ 
       success: true,
-      movies: movies || [] 
+      movies: moviesList || [] 
     });
   } catch (e) {
     console.error('[MOVIES LIST ERROR]', e);
@@ -628,7 +634,11 @@ app.get("/make-98d801c7-music/movies/list", async (c) => {
       movies: [] 
     }, 500);
   }
-});
+};
+
+app.get("/movies/list", handleMoviesList);
+app.get("/make-98d801c7-music/movies/list", handleMoviesList);
+app.get("/make-server-98d801c7/movies/list", handleMoviesList);
 
 // CHECK USER MOVIE PASS
 app.post("/make-98d801c7-music/movies/check-pass", async (c) => {
@@ -857,12 +867,12 @@ app.post("/make-98d801c7-music/payments/request-refund", async (c) => {
 });
 
 // SOFTWARE LIST
-app.get("/make-98d801c7-music/software/list", async (c) => {
+const handleSoftwareList = async (c: any) => {
   try {
-    const software = await kv.getByPrefix("software:");
+    const softwareList = await kv.getByPrefix("software:");
     return c.json({ 
       success: true,
-      software: software || [] 
+      software: softwareList || [] 
     });
   } catch (e) {
     console.error('[SOFTWARE LIST ERROR]', e);
@@ -871,7 +881,156 @@ app.get("/make-98d801c7-music/software/list", async (c) => {
       software: [] 
     }, 500);
   }
-});
+};
+
+app.get("/software/list", handleSoftwareList);
+app.get("/make-98d801c7-music/software/list", handleSoftwareList);
+app.get("/make-server-98d801c7/software/list", handleSoftwareList);
+
+// UPLOAD CONTENT
+const handleMusicUpload = async (c: any) => {
+  try {
+    const fd = await c.req.formData();
+    const file = fd.get("file") as File;
+    const title = (fd.get("title") as string) || (file?.name.split('.')[0] ?? 'Untitled Track');
+    const mediaType = (fd.get("mediaType") as string) || 'audio';
+
+    if (!file) {
+      return c.json({ error: "File missing" }, 400);
+    }
+
+    const uploadRes = await music.uploadMusicFile(
+      `music/${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name}`,
+      await file.arrayBuffer(),
+      file.type
+    );
+
+    const audioUrl = uploadRes.publicUrl;
+    const trackId = `track-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    await music.saveTrackMetadata({
+      id: trackId,
+      title,
+      type: 'audio',
+      mediaType,
+      duration: 'Unknown',
+      releaseDate: new Date().toISOString(),
+      audioUrl,
+      fileName: file.name,
+    });
+
+    return c.json({ success: true, id: trackId, audioUrl });
+  } catch (e) {
+    console.error('[MUSIC UPLOAD ERROR]', e);
+    return c.json({ error: 'Failed to upload music file' }, 500);
+  }
+};
+
+app.post("/music/upload", handleMusicUpload);
+app.post("/make-98d801c7-music/music/upload", handleMusicUpload);
+app.post("/make-server-98d801c7/music/upload", handleMusicUpload);
+
+const handleMoviesUpload = async (c: any) => {
+  try {
+    const fd = await c.req.formData();
+    const file = fd.get("file") as File;
+    const title = (fd.get("title") as string) || (file?.name.split('.')[0] ?? 'Untitled Movie');
+    const quality = (fd.get("quality") as string) || 'HD';
+    const description = (fd.get("description") as string) || 'Uploaded movie';
+    const genre = (fd.get("genre") as string) || 'Unknown';
+    const releaseYear = (fd.get("releaseYear") as string) || new Date().getFullYear().toString();
+    const duration = (fd.get("duration") as string) || 'Unknown';
+    const thumbnailFile = fd.get("thumbnail") as File;
+
+    if (!file) {
+      return c.json({ error: "File missing" }, 400);
+    }
+
+    const uploadRes = await movies.uploadMovieFile(
+      `movies/${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name}`,
+      await file.arrayBuffer(),
+      file.type
+    );
+
+    let thumbnailUrl = "";
+    if (thumbnailFile && thumbnailFile instanceof File) {
+      const thumbRes = await movies.uploadMovieFile(
+        `movies/thumbnails/${Date.now()}-${Math.random().toString(36).slice(2)}-${thumbnailFile.name}`,
+        await thumbnailFile.arrayBuffer(),
+        thumbnailFile.type
+      );
+      thumbnailUrl = thumbRes.publicUrl;
+    }
+
+    const movieId = `movie-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    await movies.saveMovieMetadata({
+      id: movieId,
+      title,
+      description,
+      genre,
+      duration,
+      releaseYear,
+      quality,
+      videoUrl: uploadRes.publicUrl,
+      thumbnail: thumbnailUrl,
+      fileName: file.name,
+    });
+
+    return c.json({ success: true, id: movieId, videoUrl: uploadRes.publicUrl });
+  } catch (e) {
+    console.error('[MOVIE UPLOAD ERROR]', e);
+    return c.json({ error: 'Failed to upload movie file' }, 500);
+  }
+};
+
+app.post("/movies/upload", handleMoviesUpload);
+app.post("/make-98d801c7-music/movies/upload", handleMoviesUpload);
+app.post("/make-server-98d801c7/movies/upload", handleMoviesUpload);
+
+const handleSoftwareUpload = async (c: any) => {
+  try {
+    const fd = await c.req.formData();
+    const file = fd.get("file") as File;
+    const title = (fd.get("title") as string) || (file?.name.split('.')[0] ?? 'Untitled Software');
+    const platform = (fd.get("platform") as string) || 'Windows';
+    const price = (fd.get("price") as string) || '0';
+    const category = (fd.get("category") as string) || (platform === 'Android' ? 'App' : 'Software');
+
+    if (!file) {
+      return c.json({ error: "File missing" }, 400);
+    }
+
+    const uploadRes = await software.uploadSoftwareFile(
+      `software/${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name}`,
+      await file.arrayBuffer(),
+      file.type
+    );
+
+    const softwareId = `software-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    await software.saveSoftwareMetadata({
+      id: softwareId,
+      title,
+      description: 'Uploaded software',
+      version: '1.0',
+      platform,
+      category,
+      price,
+      downloadUrl: uploadRes.publicUrl,
+      fileName: file.name,
+    });
+
+    return c.json({ success: true, id: softwareId, downloadUrl: uploadRes.publicUrl });
+  } catch (e) {
+    console.error('[SOFTWARE UPLOAD ERROR]', e);
+    return c.json({ error: 'Failed to upload software file' }, 500);
+  }
+};
+
+app.post("/software/upload", handleSoftwareUpload);
+app.post("/make-98d801c7-music/software/upload", handleSoftwareUpload);
+app.post("/make-server-98d801c7/software/upload", handleSoftwareUpload);
 
 // START SERVER
 Deno.serve(app.fetch);
