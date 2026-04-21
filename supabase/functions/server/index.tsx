@@ -242,6 +242,74 @@ app.post("/make-98d801c7-music/payments/pesapal/callback", async (c) => {
   }
 });
 
+// 4. VERIFY PESAPAL PAYMENT (Called by client after redirect)
+app.post("/make-98d801c7-music/payments/pesapal/verify", async (c) => {
+  try {
+    const body = await c.req.json();
+    const { orderTrackingId, userId } = body;
+
+    if (!orderTrackingId) {
+      return c.json({ error: "Order tracking ID required", code: "VALIDATION_ERROR" }, 400);
+    }
+
+    // Get order data from kv
+    const orderData = await kv.get(`pesapal:order:${orderTrackingId}`) as any;
+    
+    if (!orderData) {
+      return c.json({ 
+        error: "Order not found",
+        status: "FAILED",
+        code: "ORDER_NOT_FOUND"
+      }, 404);
+    }
+
+    // Verify user matches
+    if (userId && orderData.userId !== userId) {
+      return c.json({ 
+        error: "Unauthorized",
+        status: "FAILED",
+        code: "UNAUTHORIZED"
+      }, 403);
+    }
+
+    // Query current status from PesaPal
+    const result = await pesapal.getPesaPalOrderStatus(orderTrackingId);
+    
+    if (!result || 'error' in result) {
+      // Return cached status if available
+      return c.json({
+        status: orderData.status || "PENDING",
+        orderTrackingId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+      });
+    }
+
+    // Update cached status
+    if (result.payment_status) {
+      orderData.status = result.payment_status;
+      await kv.set(`pesapal:order:${orderTrackingId}`, orderData);
+    }
+
+    return c.json({
+      status: result.payment_status || orderData.status || "PENDING",
+      orderTrackingId,
+      amount: orderData.amount,
+      currency: orderData.currency,
+      ...result
+    });
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    console.error('[PESAPAL VERIFY ERROR]', errorMessage);
+    return c.json({ 
+      error: "Failed to verify payment",
+      status: "UNKNOWN",
+      code: "INTERNAL_ERROR",
+      details: errorMessage 
+    }, 500);
+  }
+});
+
 // ==================== AIRTEL MONEY (MANUAL VERIFICATION) ====================
 
 // 4. SUBMIT AIRTEL MONEY PAYMENT (WITH PROOF)
@@ -546,7 +614,7 @@ app.get("/make-server-98d801c7/music/tracks", async (c) => {
 });
 
 // MOVIE LIST
-app.get("/make-server-98d801c7/movies/list", async (c) => {
+app.get("/make-98d801c7-music/movies/list", async (c) => {
   try {
     const movies = await kv.getByPrefix("movie:");
     return c.json({ 
@@ -562,8 +630,37 @@ app.get("/make-server-98d801c7/movies/list", async (c) => {
   }
 });
 
+// CHECK USER MOVIE PASS
+app.post("/make-98d801c7-music/movies/check-pass", async (c) => {
+  try {
+    const body = await c.req.json();
+    const { userId } = body;
+
+    if (!userId) {
+      return c.json({ hasValidPass: false });
+    }
+
+    // Check if user has a completed subscription payment
+    const userPayments = await kv.get(`payment:user:${userId}`) as any;
+    
+    if (!userPayments || userPayments.length === 0) {
+      return c.json({ hasValidPass: false });
+    }
+
+    // Check if any payment is for a subscription and is approved
+    const hasValidPass = userPayments.some((payment: any) => 
+      payment.type === 'subscription' && payment.status === 'approved'
+    );
+
+    return c.json({ hasValidPass });
+  } catch (e) {
+    console.error('[CHECK PASS ERROR]', e);
+    return c.json({ hasValidPass: false }, 500);
+  }
+});
+
 // SOFTWARE LIST
-app.get("/make-server-98d801c7/software/list", async (c) => {
+app.get("/make-98d801c7-music/software/list", async (c) => {
   try {
     const software = await kv.getByPrefix("software:");
     return c.json({ 

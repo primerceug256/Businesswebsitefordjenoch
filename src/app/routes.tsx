@@ -6,6 +6,7 @@ import Movies from "./pages/Movies";
 import Software from "./pages/Software";
 import Cart from "./pages/Cart";
 import Subscription from "./pages/Subscription";
+import Payment from "./pages/Payment";
 import Contact from "./pages/Contact";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -24,6 +25,7 @@ export const router = createBrowserRouter([
       { path: "software", Component: Software },
       { path: "cart", Component: Cart },
       { path: "subscription", Component: Subscription },
+      { path: "payment", Component: Payment },
       { path: "contact", Component: Contact },
       { path: "login", Component: Login },
       { path: "signup", Component: Signup },

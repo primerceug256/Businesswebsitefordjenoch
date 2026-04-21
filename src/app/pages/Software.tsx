@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Download, Upload, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useCart } from '../context/CartContext';
+import { useNavigate } from 'react-router';
 import { projectId, publicAnonKey } from "../../../utils/supabase/info";
 
 interface Software {
@@ -18,7 +18,7 @@ interface Software {
 
 export default function Software() {
   const { user } = useAuth();
-  const { addToCart } = useCart();
+  const navigate = useNavigate();
   const [software, setSoftware] = useState<Software[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
@@ -54,15 +54,22 @@ export default function Software() {
       // Android is free
       window.open(item.downloadUrl, '_blank');
     } else {
-      // Add to cart for payment
-      addToCart({
+      // Check if user is logged in
+      if (!user) {
+        navigate('/login');
+        return;
+      }
+
+      // Redirect to payment page
+      sessionStorage.setItem("pending_payment_item", JSON.stringify({
         id: item.id,
         name: item.title,
         price: 5000,
         type: 'software',
         platform: item.platform,
-      });
-      alert('Added to cart. Please complete payment to download.');
+        downloadUrl: item.downloadUrl,
+      }));
+      navigate('/payment');
     }
   };
 

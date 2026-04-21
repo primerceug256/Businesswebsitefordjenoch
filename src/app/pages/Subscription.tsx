@@ -25,15 +25,16 @@ export default function Subscription() {
     if (isAdmin) return alert("Admin Active");
     if (!user) return navigate('/login');
 
-    // AUTOMATIC DIALER
-    window.location.href = "tel:*185#";
-
-    sessionStorage.setItem("pending_item", JSON.stringify({
-      id: plan.id, name: plan.name, price: plan.price, type: 'subscription'
+    // Store the payment item in sessionStorage
+    sessionStorage.setItem("pending_payment_item", JSON.stringify({
+      id: plan.id, 
+      name: plan.name, 
+      price: plan.price, 
+      type: 'subscription'
     }));
     
-    alert("Dialing *185#... Pay " + plan.price + " UGX then click OK to upload proof.");
-    navigate('/cart');
+    // Redirect to automatic payment page
+    navigate('/payment');
   };
 
   return (
