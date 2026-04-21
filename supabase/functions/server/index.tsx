@@ -887,6 +887,139 @@ app.get("/software/list", handleSoftwareList);
 app.get("/make-98d801c7-music/software/list", handleSoftwareList);
 app.get("/make-server-98d801c7/software/list", handleSoftwareList);
 
+// SEED DEMO DATA
+app.post("/make-98d801c7-music/seed", async (c) => {
+  try {
+    // Seed demo music tracks
+    const demoTracks = [
+      {
+        id: 'track-demo-001',
+        title: 'Summer Vibes Mix',
+        artist: 'DJ ENOCH PRO',
+        duration: '45:32',
+        releaseDate: '2024-01-15',
+        type: 'audio',
+        mediaType: 'audio',
+        audioUrl: 'https://example.com/audio/summer-vibes.mp3',
+        fileName: 'summer-vibes.mp3'
+      },
+      {
+        id: 'track-demo-002',
+        title: 'Night Club Beats',
+        artist: 'DJ ENOCH PRO',
+        duration: '38:15',
+        releaseDate: '2024-02-10',
+        type: 'audio',
+        mediaType: 'audio',
+        audioUrl: 'https://example.com/audio/night-club-beats.mp3',
+        fileName: 'night-club-beats.mp3'
+      },
+      {
+        id: 'track-demo-003',
+        title: 'Deep House Sessions',
+        artist: 'DJ ENOCH PRO',
+        duration: '52:48',
+        releaseDate: '2024-03-05',
+        type: 'audio',
+        mediaType: 'audio',
+        audioUrl: 'https://example.com/audio/deep-house.mp3',
+        fileName: 'deep-house.mp3'
+      }
+    ];
+
+    // Seed demo movies
+    const demoMovies = [
+      {
+        id: 'movie-demo-001',
+        title: 'The DJ Chronicles',
+        description: 'An epic journey through the world of music production',
+        genre: 'Documentary',
+        duration: '120',
+        releaseYear: '2024',
+        quality: 'HD',
+        videoUrl: 'https://example.com/video/dj-chronicles.mp4',
+        fileName: 'dj-chronicles.mp4',
+        vj: 'DJ ENOCH PRO'
+      },
+      {
+        id: 'movie-demo-002',
+        title: 'Sound Wave',
+        description: 'A thrilling story about music and dreams',
+        genre: 'Drama',
+        duration: '105',
+        releaseYear: '2023',
+        quality: 'Full HD',
+        videoUrl: 'https://example.com/video/sound-wave.mp4',
+        fileName: 'sound-wave.mp4',
+        vj: 'DJ ENOCH PRO'
+      }
+    ];
+
+    // Seed demo software
+    const demoSoftware = [
+      {
+        id: 'software-demo-001',
+        title: 'DJ Studio Pro',
+        description: 'Professional DJ mixing software with advanced effects',
+        version: '3.5.1',
+        platform: 'Windows',
+        category: 'Audio',
+        price: '5000',
+        downloadUrl: 'https://example.com/software/dj-studio-pro-win.exe',
+        fileName: 'dj-studio-pro-win.exe'
+      },
+      {
+        id: 'software-demo-002',
+        title: 'Beat Maker',
+        description: 'Create professional beats and instrumentals',
+        version: '2.1.0',
+        platform: 'Android',
+        category: 'Audio',
+        price: '0',
+        downloadUrl: 'https://play.google.com/store/apps/details?id=beatmaker',
+        fileName: 'beat-maker.apk'
+      },
+      {
+        id: 'software-demo-003',
+        title: 'Sound Editor Plus',
+        description: 'Edit and enhance audio files with professional tools',
+        version: '4.2.3',
+        platform: 'Windows',
+        category: 'Audio',
+        price: '5000',
+        downloadUrl: 'https://example.com/software/sound-editor-plus.exe',
+        fileName: 'sound-editor-plus.exe'
+      }
+    ];
+
+    // Add all demo data to KV store
+    for (const track of demoTracks) {
+      await kv.set(`track:${track.id}`, track);
+    }
+
+    for (const movie of demoMovies) {
+      await kv.set(`movie:${movie.id}`, movie);
+    }
+
+    for (const software of demoSoftware) {
+      await kv.set(`software:${software.id}`, software);
+    }
+
+    return c.json({
+      success: true,
+      message: 'Demo data seeded successfully',
+      data: {
+        tracks: demoTracks.length,
+        movies: demoMovies.length,
+        software: demoSoftware.length
+      }
+    });
+  } catch (e) {
+    console.error('[SEED ERROR]', e);
+    return c.json({ error: 'Failed to seed data' }, 500);
+  }
+});
+
 // UPLOAD CONTENT
 const handleMusicUpload = async (c: any) => {
   try {
