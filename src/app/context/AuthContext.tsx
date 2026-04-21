@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase } from './supabaseClient';
+import { supabase } from './supabaseClient'; // Make sure this file exists
 
 interface User {
   id: string;
@@ -22,8 +22,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Check for an existing session when the app loads
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // This part automatically restores the session from LocalStorage
+    const initAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setUser({
           id: session.user.id,
@@ -32,9 +33,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       }
       setLoading(false);
-    });
+    };
 
-    // 2. Listen for auth changes (login/logout) across tabs
+    initAuth();
+
+    // Listen for changes (Login/Logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUser({
@@ -54,9 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        data: { name }, // This stores the name in user_metadata
-      },
+      options: { data: { name } },
     });
     if (error) throw error;
   };
@@ -70,8 +71,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    await supabase.auth.signOut();
+    setUser(null);
   };
 
   const isAdmin = user?.email === 'primerceug@gmail.com';
