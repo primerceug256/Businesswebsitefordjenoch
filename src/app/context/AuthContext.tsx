@@ -2,15 +2,10 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { supabase } from './supabaseClient';
 import { publicAnonKey, projectId } from '@utils/supabase/info';
 
-interface User {
-  id: string;
-  email: string;
-  name?: string;
-}
+interface User { id: string; email: string; name?: string; }
 
 interface AuthContextType {
-  user: User | null;
-  isAdmin: boolean;
+  user: User | null; isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
@@ -18,24 +13,18 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-const EDGE_FUNC_URL = `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music`;
+const API_URL = `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music`;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Check for standard Supabase Session (Google Login)
     const initAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        setUser({
-          id: session.user.id,
-          email: session.user.email ?? '',
-          name: session.user.user_metadata?.name,
-        });
+        setUser({ id: session.user.id, email: session.user.email ?? '', name: session.user.user_metadata?.name });
       } else {
-        // 2. Check for Manual Session (Edge Function Login)
         const stored = localStorage.getItem('dj_user');
         if (stored) setUser(JSON.parse(stored));
       }
@@ -43,19 +32,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     initAuth();
 
-    // Listen for Google Auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setUser({
-          id: session.user.id, email: session.user.email ?? '', name: session.user.user_metadata?.name,
-        });
-      }
+      if (session?.user) setUser({ id: session.user.id, email: session.user.email ?? '', name: session.user.user_metadata?.name });
+      else if (!_event.includes('SIGNED_IN')) setUser(null);
     });
     return () => subscription.unsubscribe();
   }, []);
 
   const signup = async (email: string, password: string, name: string) => {
-    const res = await fetch(`${EDGE_FUNC_URL}/auth/signup`, {
+    const res = await fetch(`${API_URL}/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${publicAnonKey}` },
       body: JSON.stringify({ email, password, name }),
@@ -69,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const login = async (email: string, password: string) => {
-    const res = await fetch(`${EDGE_FUNC_URL}/auth/signin`, {
+    const res = await fetch(`${API_URL}/auth/signin`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${publicAnonKey}` },
       body: JSON.stringify({ email, password }),
@@ -83,10 +68,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const loginWithGoogle = async () => {
-    await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: window.location.origin }
     });
+    if (error) throw error;
   };
 
   const logout = async () => {
