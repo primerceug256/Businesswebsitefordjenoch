@@ -1,7 +1,7 @@
 import { motion } from "motion/react";
 import { Film, Download, Clock, Star, Loader } from "lucide-react";
 import { useState, useEffect } from "react";
-import { projectId, publicAnonKey } from '@utils/supabase/info';
+import { projectId, publicAnonKey } from "/utils/supabase/info";
 
 interface Movie {
   id: string;
@@ -85,7 +85,7 @@ export function MoviesSection() {
   const fetchMovies = async () => {
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/movies/list`,
+        `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/movies/list`,
         {
           headers: {
             Authorization: `Bearer ${publicAnonKey}`,
@@ -98,7 +98,7 @@ export function MoviesSection() {
       }
 
       const data = await response.json();
-      setMovies(Array.isArray(data.movies) ? data.movies : Object.values(data.movies || {}));
+      setMovies(data.movies || []);
     } catch (err) {
       console.error("Error fetching movies:", err);
       setError(err instanceof Error ? err.message : "Failed to load movies");
@@ -108,27 +108,7 @@ export function MoviesSection() {
   };
 
   if (movies.length === 0 && !loading && !error) {
-    return (
-      <section id="movies" className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
-              Free Movies
-            </h2>
-            <div className="w-24 h-1 bg-gradient-to-r from-red-500 to-pink-500 mx-auto mb-6"></div>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              No movies uploaded yet. Check back soon!
-            </p>
-          </motion.div>
-        </div>
-      </section>
-    );
+    return null; // Don't show section if no movies
   }
 
   return (

@@ -1,7 +1,7 @@
 import { motion } from "motion/react";
 import { Package, Download, Monitor, Loader } from "lucide-react";
 import { useState, useEffect } from "react";
-import { projectId, publicAnonKey } from '@utils/supabase/info';
+import { projectId, publicAnonKey } from "/utils/supabase/info";
 
 interface Software {
   id: string;
@@ -90,7 +90,7 @@ export function SoftwareSection() {
   const fetchSoftware = async () => {
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/software/list`,
+        `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/software/list`,
         {
           headers: {
             Authorization: `Bearer ${publicAnonKey}`,
@@ -103,7 +103,7 @@ export function SoftwareSection() {
       }
 
       const data = await response.json();
-      setSoftware(Array.isArray(data.software) ? data.software : Object.values(data.software || {}));
+      setSoftware(data.software || []);
     } catch (err) {
       console.error("Error fetching software:", err);
       setError(err instanceof Error ? err.message : "Failed to load software");

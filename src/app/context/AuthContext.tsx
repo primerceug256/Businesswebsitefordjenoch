@@ -1,16 +1,15 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { projectId, publicAnonKey } from '@utils/supabase/info';
-import { createClient } from '@supabase/supabase-js';
-
-// Initialize Supabase Client for Google Auth
-const supabase = createClient(`https://${projectId}.supabase.co`, publicAnonKey);
+import { projectId, publicAnonKey } from '/utils/supabase/info';
 
 interface User {
   id: string;
   email: string;
   name?: string;
-  avatar?: string;
-  code?: string;
+  profilePhoto?: string;
+  subscription?: {
+    plan: string;
+    expiresAt: string;
+  };
 }
 
 interface AuthContextType {
@@ -18,98 +17,123 @@ interface AuthContextType {
   isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
   logout: () => void;
+  updateProfile: (data: Partial<User>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music`;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Check for custom Email session
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
-      try { setUser(JSON.parse(storedUser)); } catch (e) { localStorage.removeItem('user'); }
+      setUser(JSON.parse(storedUser));
     }
-
-    // 2. Check for Supabase (Google) session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser({
-          id: session.user.id,
-          email: session.user.email || '',
-          name: session.user.user_metadata.full_name || session.user.email?.split('@')[0],
-          avatar: session.user.user_metadata.avatar_url
-        });
-      }
-      setLoading(false);
-    });
-
-    // Listen for Auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setUser({
-          id: session.user.id,
-          email: session.user.email || '',
-          name: session.user.user_metadata.full_name,
-          avatar: session.user.user_metadata.avatar_url
-        });
-      }
-    });
-
-    return () => subscription.unsubscribe();
   }, []);
 
-  const isAdmin = user?.email?.toLowerCase() === 'primerceug@gmail.com';
+  const login = async (email: string, password: string) => {
+    try {
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/auth/login`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${publicAnonKey}`,
+          },
+          body: JSON.stringify({ email, password }),
+        }
+      );
 
-  const loginWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: window.location.origin
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('Login failed:', error);
+        throw new Error(error.error || 'Login failed');
       }
-    });
-    if (error) throw error;
+
+      const data = await response.json();
+      console.log('Login successful:', data);
+      setUser(data.user);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('accessToken', data.user.id); // Store token
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
   };
 
   const signup = async (email: string, password: string, name: string) => {
-    const response = await fetch(`${API_URL}/auth/signup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${publicAnonKey}`, 'apikey': publicAnonKey },
-      body: JSON.stringify({ email, password, name }),
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Signup Failed');
-    setUser(data.user);
-    localStorage.setItem('user', JSON.stringify(data.user));
+    try {
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/auth/signup`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${publicAnonKey}`,
+          },
+          body: JSON.stringify({ email, password, name }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('Signup failed:', error);
+        throw new Error(error.error || 'Signup failed');
+      }
+
+      const data = await response.json();
+      console.log('Signup successful:', data);
+      setUser(data.user);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('accessToken', data.user.id); // Store token
+    } catch (error) {
+      console.error('Signup error:', error);
+      throw error;
+    }
   };
 
-  const login = async (email: string, password: string) => {
-    const response = await fetch(`${API_URL}/auth/signin`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${publicAnonKey}`, 'apikey': publicAnonKey },
-      body: JSON.stringify({ email, password }),
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Login Failed');
-    setUser(data.user);
-    localStorage.setItem('user', JSON.stringify(data.user));
-  };
-
-  const logout = async () => {
-    await supabase.auth.signOut();
+  const logout = () => {
     setUser(null);
     localStorage.removeItem('user');
+    localStorage.removeItem('accessToken');
   };
 
-  if (loading) return null;
+  const updateProfile = async (data: Partial<User>) => {
+    if (!user) return;
+
+    try {
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/user/update`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${publicAnonKey}`,
+          },
+          body: JSON.stringify({ userId: user.id, ...data }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Update failed');
+      }
+
+      const updatedUser = { ...user, ...data };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+    } catch (error) {
+      console.error('Update profile error:', error);
+      throw error;
+    }
+  };
+
+  const isAdmin = user?.email === 'primerceug@gmail.com';
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin, login, signup, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, isAdmin, login, signup, logout, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );
@@ -117,6 +141,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('AuthProvider missing');
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
   return context;
 }

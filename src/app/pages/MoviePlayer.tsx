@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { ArrowLeft, Download } from 'lucide-react';
-import { projectId, publicAnonKey } from '@utils/supabase/info';
+import { projectId, publicAnonKey } from '/utils/supabase/info';
 
 export default function MoviePlayer() {
   const { id } = useParams();
-  const { user, isAdmin } = useAuth(); // Destructure isAdmin from AuthContext
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [movie, setMovie] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -17,26 +17,24 @@ export default function MoviePlayer() {
       return;
     }
 
-    // UPDATED: If user is Admin, they don't need a subscription record to view the player
-    if (!isAdmin && !user.subscription) {
+    if (!user.subscription) {
       navigate('/subscription');
       return;
     }
 
     fetchMovie();
-  }, [id, user, isAdmin, navigate]);
+  }, [id, user, navigate]);
 
   const fetchMovie = async () => {
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/movies/list`,
+        `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/movies/list`,
         {
           headers: { Authorization: `Bearer ${publicAnonKey}` },
         }
       );
       const data = await response.json();
-      const movies = Array.isArray(data.movies) ? data.movies : Object.values(data.movies || {});
-      const foundMovie = movies.find((m: any) => m.id === id);
+      const foundMovie = data.movies.find((m: any) => m.id === id);
       setMovie(foundMovie);
     } catch (error) {
       console.error('Error fetching movie:', error);
@@ -61,9 +59,8 @@ export default function MoviePlayer() {
     );
   }
 
-  // UPDATED LOGIC: canDownload is TRUE if you are Admin OR have a valid plan
-  const canDownload = isAdmin || (user?.subscription &&
-    ['weekly', 'monthly', '2months', 'gold', 'platinum', 'diamond', 'unlimited'].includes(user.subscription.plan));
+  const canDownload = user?.subscription &&
+    ['weekly', 'monthly', '2months', 'gold', 'platinum', 'diamond', 'unlimited'].includes(user.subscription.plan);
 
   return (
     <div className="bg-black text-white min-h-screen">
@@ -109,33 +106,19 @@ export default function MoviePlayer() {
                 className="w-full bg-orange-600 py-3 rounded-lg hover:bg-orange-700 flex items-center justify-center gap-2 mb-3"
               >
                 <Download size={20} />
-                Download Movie {isAdmin && "(Lifetime Access)"}
+                Download Movie
               </a>
             ) : (
-              <div className="mb-4">
-                <p className="text-sm text-red-500 font-bold mb-2">Subscription Required</p>
-                <p className="text-xs text-gray-400">
-                  Upgrade to Weekly Pass or higher to download movies.
-                </p>
-              </div>
+              <p className="text-sm text-gray-400 mb-4">
+                Upgrade to Weekly Pass or higher to download movies
+              </p>
             )}
-            
-            {/* Show subscription plans button only if the user isn't already fully authorized */}
-            {!isAdmin && (
-              <button
-                onClick={() => navigate('/subscription')}
-                className="w-full bg-gray-800 py-3 rounded-lg hover:bg-gray-700"
-              >
-                View Plans
-              </button>
-            )}
-
-            {isAdmin && (
-              <div className="mt-4 p-4 border border-orange-500/30 rounded bg-orange-500/5">
-                <p className="text-[10px] text-orange-500 uppercase font-black">Admin Notice</p>
-                <p className="text-xs text-gray-400">You are logged in as the owner. All downloads are unlocked for you.</p>
-              </div>
-            )}
+            <button
+              onClick={() => navigate('/subscription')}
+              className="w-full bg-gray-800 py-3 rounded-lg hover:bg-gray-700"
+            >
+              View Plans
+            </button>
           </div>
         </div>
       </div>

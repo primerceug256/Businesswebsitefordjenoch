@@ -1,23 +1,23 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router';
 import { useAuth } from '../context/AuthContext';
-import { LogIn, AlertCircle, Loader2 } from 'lucide-react';
-import { FcGoogle } from 'react-icons/fc';
+import { LogIn } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const auth = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+
     try {
-      await auth.login(email, password);
+      await login(email, password);
       navigate('/');
     } catch (err: any) {
       setError(err.message || 'Login failed');
@@ -27,42 +27,65 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center px-4">
-      <div className="bg-gray-900 border border-gray-800 rounded-3xl p-8 w-full max-w-md shadow-2xl">
+    <div className="min-h-screen bg-gradient-to-br from-orange-600 to-pink-600 flex items-center justify-center px-4">
+      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-black text-white uppercase tracking-tight">Login</h1>
-          <p className="text-gray-400 mt-1">Access the party beast library</p>
-        </div>
-
-        <button 
-          onClick={() => auth.loginWithGoogle()}
-          className="w-full bg-white text-black py-3 rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-gray-100 transition-all mb-6"
-        >
-          <FcGoogle size={24} /> Continue with Google
-        </button>
-
-        <div className="relative flex items-center mb-6">
-          <div className="flex-grow border-t border-gray-800"></div>
-          <span className="mx-4 text-gray-500 text-[10px] font-black tracking-widest uppercase">Or Email</span>
-          <div className="flex-grow border-t border-gray-800"></div>
+          <div className="bg-orange-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+            <LogIn size={32} className="text-white" />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900">Welcome Back</h1>
+          <p className="text-gray-600 mt-2">Login to your account</p>
         </div>
 
         {error && (
-          <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-3 rounded-xl mb-4 text-sm font-bold flex items-center gap-2">
-            <AlertCircle size={16} /> {error}
+          <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6">
+            {error}
           </div>
         )}
 
-        <form onSubmit={handleEmailLogin} className="space-y-4">
-          <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full px-4 py-3 bg-black border border-gray-800 rounded-xl text-white outline-none focus:border-orange-500" />
-          <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full px-4 py-3 bg-black border border-gray-800 rounded-xl text-white outline-none focus:border-orange-500" />
-          <button type="submit" disabled={loading} className="w-full bg-orange-600 text-white py-4 rounded-xl font-black hover:bg-orange-700 disabled:opacity-50 flex items-center justify-center gap-2 uppercase tracking-widest">
-            {loading ? <Loader2 className="animate-spin" /> : 'Login'}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Email
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-600 focus:border-transparent text-gray-900"
+              placeholder="your@email.com"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Password
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-600 focus:border-transparent text-gray-900"
+              placeholder="••••••••"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-orange-600 text-white py-3 rounded-lg font-semibold hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
 
-        <p className="text-center mt-6 text-gray-500 text-sm font-bold">
-          New here? <Link to="/signup" className="text-orange-500 hover:underline">Create Account</Link>
+        <p className="text-center mt-6 text-gray-600">
+          Don't have an account?{' '}
+          <Link to="/signup" className="text-orange-600 font-semibold hover:underline">
+            Sign Up
+          </Link>
         </p>
       </div>
     </div>

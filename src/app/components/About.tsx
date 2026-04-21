@@ -17,7 +17,7 @@ export function About() {
           </h2>
           <div className="w-24 h-1 bg-orange-600 mx-auto mb-4"></div>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Uganda's trusted source for professional DJ products,Translated Movies,Software and Other Services
+            Uganda's trusted source for professional DJ products and services
           </p>
         </motion.div>
 
@@ -56,7 +56,7 @@ export function About() {
             className="space-y-6"
           >
             <h3 className="text-3xl font-bold text-gray-900 mb-6">
-              Professional DJ Services,Music,Movies& Products
+              Professional DJ Services & Products
             </h3>
             <p className="text-lg text-gray-700 leading-relaxed">
               With over <span className="text-orange-600 font-semibold">1 year of experience</span>, DJ Enoch Pro provides professional DJ services and high-quality digital products across Uganda.
@@ -76,7 +76,7 @@ export function About() {
               </div>
               <div className="flex items-center gap-3">
                 <CheckCircle className="w-5 h-5 text-orange-600 flex-shrink-0" />
-                <span className="text-gray-700">All Music Genres, Movie Genres,Software& Playlists</span>
+                <span className="text-gray-700">All Music Genres & Playlists</span>
               </div>
               <div className="flex items-center gap-3">
                 <CheckCircle className="w-5 h-5 text-orange-600 flex-shrink-0" />

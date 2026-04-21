@@ -1,297 +1,161 @@
 import { useState } from 'react';
 import { useCart } from '../context/CartContext';
+import { Trash2, ShoppingCart, Upload } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router';
-import { projectId, publicAnonKey } from '@utils/supabase/info';
+import { projectId, publicAnonKey } from '/utils/supabase/info';
 
 export default function Cart() {
-  const { items, clearCart, total } = useCart();
+  const { items, removeFromCart, clearCart, total } = useCart();
   const { user } = useAuth();
-  const navigate = useNavigate();
-  
-  // Airtel Money state
-  const [proof, setProof] = useState<File | null>(null);
-  const [tid, setTid] = useState('');
-  
-  // UI state
-  const [loading, setLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'pesapal' | 'airtel'>('pesapal');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [transactionProof, setTransactionProof] = useState<File | null>(null);
+  const [transactionId, setTransactionId] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState('');
 
-  const pendingSub = JSON.parse(sessionStorage.getItem("pending_item") || "null");
-  const totalAmount = total + (pendingSub?.price || 0);
-
-  const submitPesaPalPayment = async (e: any) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
-    try {
-      // Create PesaPal order
-      const orderRes = await fetch(`https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/payments/pesapal/create-order`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${publicAnonKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          amount: totalAmount,
-          currency: 'UGX',
-          description: 'DJ Enoch Music Purchase',
-          customerEmail: user?.email,
-          customerName: user?.name || user?.email,
-          userId: user?.id,
-          items: [...items, pendingSub].filter(Boolean),
-        }),
-      });
-
-      if (!orderRes.ok) {
-        const err = await orderRes.json();
-        setError(err.error || "Failed to create payment order");
-        setLoading(false);
-        return;
-      }
-
-      const { orderTrackingId, redirectUrl } = await orderRes.json();
-
-      if (!redirectUrl) {
-        setError("Failed to get payment URL");
-        setLoading(false);
-        return;
-      }
-
-      // Store pending payment info
-      sessionStorage.setItem('pending_payment', JSON.stringify({
-        orderTrackingId,
-        userId: user?.id,
-        items: [...items, pendingSub].filter(Boolean),
-        total: totalAmount,
-      }));
-
-      // Redirect to PesaPal
-      window.location.href = redirectUrl;
-    } catch (err) {
-      setError("Payment error. Please try again.");
-      console.error(err);
-      setLoading(false);
+  const handleProofUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.[0]) {
+      setTransactionProof(e.target.files[0]);
     }
   };
 
-  const submitAirtelPayment = async (e: any) => {
-    e.preventDefault();
-    setError('');
-    
-    if (!proof || !tid) {
-      setError("Please fill in all fields");
+  const handleSubmitPayment = async () => {
+    if (!transactionId && !transactionProof) {
+      setMessage('Please provide transaction ID or upload proof');
       return;
     }
-    
-    setLoading(true);
+
+    setSubmitting(true);
+    setMessage('');
 
     try {
-      const fd = new FormData();
-      fd.append("userId", user?.id || "");
-      fd.append("userCode", user?.code || user?.id || "");
-      fd.append("userName", user?.name || user?.email || "");
-      fd.append("userEmail", user?.email || "");
-      fd.append("transactionId", tid);
-      fd.append("proof", proof);
-      fd.append("paymentMethod", "airtel");
-      fd.append("items", JSON.stringify([...items, pendingSub].filter(Boolean)));
-      fd.append("total", totalAmount.toString());
-
-      const res = await fetch(`https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/payments/submit`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${publicAnonKey}` },
-        body: fd
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setSuccess("Payment submitted! Waiting for Admin approval.");
-        setTimeout(() => {
-          clearCart();
-          sessionStorage.removeItem("pending_item");
-          navigate('/my-library');
-        }, 2000);
-      } else {
-        const errorData = await res.json();
-        setError(errorData.error || "Submission error. Please try again.");
+      const formData = new FormData();
+      formData.append('userId', user?.id || 'guest');
+      formData.append('items', JSON.stringify(items));
+      formData.append('total', total.toString());
+      formData.append('transactionId', transactionId);
+      if (transactionProof) {
+        formData.append('proof', transactionProof);
       }
-    } catch (err) {
-      setError("Network error. Please try again.");
-      console.error(err);
+
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/payments/submit`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${publicAnonKey}` },
+          body: formData,
+        }
+      );
+
+      if (!response.ok) throw new Error('Submission failed');
+
+      setMessage('Payment submitted! Waiting for admin approval.');
+      setTimeout(() => {
+        clearCart();
+        setTransactionId('');
+        setTransactionProof(null);
+      }, 2000);
+    } catch (error) {
+      console.error('Error:', error);
+      setMessage('Error submitting payment');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
-  if (items.length === 0 && !pendingSub) {
-    return (
-      <div className="min-h-screen bg-black text-white p-6 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Your cart is empty</h2>
-          <button
-            onClick={() => navigate('/')}
-            className="bg-orange-600 px-6 py-3 rounded-lg font-bold hover:bg-orange-700 transition"
-          >
-            Continue Shopping
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black to-slate-900 text-white p-6">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-black mb-8 text-center">Checkout</h1>
+    <div className="bg-black text-white min-h-screen py-16">
+      <div className="container mx-auto px-4 max-w-4xl">
+        <h1 className="text-5xl font-bold mb-8 bg-gradient-to-r from-orange-600 to-pink-600 bg-clip-text text-transparent">
+          Shopping Cart
+        </h1>
 
-        <div className="grid md:grid-cols-3 gap-8">
-          {/* Cart Items */}
-          <div className="md:col-span-2">
-            <div className="bg-slate-800/50 rounded-2xl border border-white/10 p-6 mb-6">
-              <h2 className="text-xl font-bold mb-4 text-orange-500">Order Summary</h2>
-              
-              <div className="space-y-4">
-                {items.map((item) => (
-                  <div key={item.id} className="flex justify-between items-center pb-4 border-b border-white/10">
-                    <div>
-                      <p className="font-bold">{item.name}</p>
-                      {item.djName && <p className="text-sm text-gray-400">by {item.djName}</p>}
-                    </div>
-                    <p className="font-bold text-orange-500">{item.price.toLocaleString()} UGX</p>
+        {items.length === 0 ? (
+          <div className="text-center py-20">
+            <ShoppingCart size={64} className="mx-auto text-gray-600 mb-4" />
+            <p className="text-gray-400 text-xl">Your cart is empty</p>
+          </div>
+        ) : (
+          <>
+            <div className="bg-gray-900 rounded-lg p-6 mb-8">
+              {items.map((item) => (
+                <div key={item.id} className="flex items-center justify-between py-4 border-b border-gray-800 last:border-0">
+                  <div>
+                    <h3 className="font-bold text-lg">{item.name}</h3>
+                    <p className="text-sm text-gray-400">
+                      {item.type === 'dj-drop' && item.djName && `DJ Name: ${item.djName}`}
+                      {item.type === 'software' && item.platform && `Platform: ${item.platform}`}
+                    </p>
                   </div>
-                ))}
-                
-                {pendingSub && (
-                  <div className="flex justify-between items-center pb-4 border-b border-white/10">
-                    <div>
-                      <p className="font-bold">{pendingSub.name}</p>
-                      <p className="text-sm text-gray-400">Subscription</p>
-                    </div>
-                    <p className="font-bold text-orange-500">{pendingSub.price.toLocaleString()} UGX</p>
+                  <div className="flex items-center gap-4">
+                    <span className="text-orange-600 font-bold">{item.price.toLocaleString()} UGX</span>
+                    <button
+                      onClick={() => removeFromCart(item.id)}
+                      className="text-red-500 hover:text-red-400"
+                    >
+                      <Trash2 size={20} />
+                    </button>
                   </div>
-                )}
-              </div>
-
-              <div className="mt-6 pt-4 border-t border-orange-500/30">
-                <div className="flex justify-between items-center text-lg font-black">
-                  <span>Total:</span>
-                  <span className="text-orange-500">{totalAmount.toLocaleString()} UGX</span>
                 </div>
+              ))}
+
+              <div className="flex items-center justify-between pt-4 text-xl font-bold">
+                <span>Total:</span>
+                <span className="text-orange-600">{total.toLocaleString()} UGX</span>
               </div>
             </div>
-          </div>
 
-          {/* Payment Form */}
-          <div className="md:col-span-1">
-            <div className="bg-gradient-to-b from-orange-900/20 to-slate-900/50 rounded-2xl border border-orange-500/30 p-6">
-              <h2 className="text-xl font-black uppercase text-orange-500 mb-6">Payment</h2>
-
-              {/* Payment Method Tabs */}
-              <div className="flex gap-2 mb-6">
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('pesapal')}
-                  className={`flex-1 py-2 rounded-lg font-bold transition text-sm ${
-                    paymentMethod === 'pesapal'
-                      ? 'bg-orange-600 text-white'
-                      : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
-                  }`}
-                >
-                  PesaPal
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('airtel')}
-                  className={`flex-1 py-2 rounded-lg font-bold transition text-sm ${
-                    paymentMethod === 'airtel'
-                      ? 'bg-orange-600 text-white'
-                      : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
-                  }`}
-                >
-                  Airtel
-                </button>
+            <div className="bg-gray-900 rounded-lg p-6">
+              <h2 className="text-2xl font-bold mb-4">Payment Information</h2>
+              <div className="bg-orange-600/10 border border-orange-600/30 rounded-lg p-4 mb-6">
+                <p className="font-semibold mb-2">Send payment to:</p>
+                <p className="text-lg">Airtel Money: <span className="font-bold text-orange-600">+256747816444</span></p>
               </div>
 
-              {/* Error Message */}
-              {error && (
-                <div className="mb-4 p-3 bg-red-900/30 border border-red-500 rounded-lg text-red-200 text-sm">
-                  {error}
+              {message && (
+                <div className={`mb-4 p-4 rounded-lg ${
+                  message.includes('Error') ? 'bg-red-600/20 text-red-400' : 'bg-green-600/20 text-green-400'
+                }`}>
+                  {message}
                 </div>
               )}
 
-              {/* Success Message */}
-              {success && (
-                <div className="mb-4 p-3 bg-green-900/30 border border-green-500 rounded-lg text-green-200 text-sm">
-                  {success}
-                </div>
-              )}
-
-              {/* PesaPal Form */}
-              {paymentMethod === 'pesapal' && (
-                <form onSubmit={submitPesaPalPayment} className="space-y-4">
-                  <div className="bg-blue-900/20 border border-blue-500/30 p-3 rounded-lg text-sm text-blue-200">
-                    <p className="font-bold mb-1">✓ Fast & Secure</p>
-                    <p>You'll be redirected to PesaPal to complete your payment safely.</p>
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full bg-orange-600 py-3 rounded-lg font-black uppercase hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? "Processing..." : `Pay ${totalAmount.toLocaleString()} UGX`}
-                  </button>
-                </form>
-              )}
-
-              {/* Airtel Money Form */}
-              {paymentMethod === 'airtel' && (
-                <form onSubmit={submitAirtelPayment} className="space-y-4">
-                  <div>
-                    <p className="text-xs text-gray-400 mb-2">Send money to:</p>
-                    <p className="font-bold text-lg text-orange-500">+256 747 816 444</p>
-                    <p className="text-xs text-gray-400">DJ ENOCH PRO</p>
-                  </div>
-
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Transaction ID</label>
                   <input
                     type="text"
-                    placeholder="Transaction ID"
-                    value={tid}
-                    onChange={(e) => setTid(e.target.value)}
-                    className="w-full bg-black p-3 rounded-lg border border-white/10 focus:border-orange-500 focus:outline-none"
-                    disabled={loading}
+                    value={transactionId}
+                    onChange={(e) => setTransactionId(e.target.value)}
+                    className="w-full bg-gray-800 px-4 py-3 rounded-lg focus:ring-2 focus:ring-orange-600"
+                    placeholder="Enter transaction ID"
                   />
+                </div>
 
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-2">Upload proof screenshot</label>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Or Upload Screenshot</label>
+                  <label className="flex items-center justify-center gap-2 w-full bg-gray-800 px-4 py-3 rounded-lg cursor-pointer hover:bg-gray-700">
+                    <Upload size={20} />
+                    {transactionProof ? transactionProof.name : 'Choose file'}
                     <input
                       type="file"
                       accept="image/*"
-                      onChange={(e) => setProof(e.target.files?.[0] || null)}
-                      className="w-full text-xs border border-dashed border-white/20 p-3 rounded-lg hover:border-orange-500 transition"
-                      disabled={loading}
+                      onChange={handleProofUpload}
+                      className="hidden"
                     />
-                  </div>
+                  </label>
+                </div>
 
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full bg-orange-600 py-3 rounded-lg font-black uppercase hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? "Sending..." : "Submit Proof"}
-                  </button>
-                </form>
-              )}
-
-              <p className="text-xs text-gray-500 mt-4 text-center">
-                Your payment information is secure and encrypted
-              </p>
+                <button
+                  onClick={handleSubmitPayment}
+                  disabled={submitting}
+                  className="w-full bg-orange-600 py-3 rounded-lg font-semibold hover:bg-orange-700 disabled:opacity-50"
+                >
+                  {submitting ? 'Submitting...' : 'Submit Payment'}
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
     </div>
   );

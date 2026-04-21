@@ -1,20 +1,23 @@
 import { createBrowserRouter } from "react-router";
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
+import Services from "./pages/Services";
 import Music from "./pages/Music";
 import Movies from "./pages/Movies";
 import Software from "./pages/Software";
 import Cart from "./pages/Cart";
 import Subscription from "./pages/Subscription";
-import Payment from "./pages/Payment";
-import PaymentHistory from "./pages/PaymentHistory";
 import Contact from "./pages/Contact";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import Profile from "./pages/Profile";
 import AdminDashboard from "./pages/AdminDashboard";
-import AdminPaymentDashboard from "./pages/AdminPaymentDashboard";
-import MyLibrary from "./pages/MyLibrary";
-import DJDropOrder from "./pages/DJDropOrder";
+import MoviePlayer from "./pages/MoviePlayer";
+import LearnMore from "./pages/LearnMore";
+import Nonstop from "./pages/Nonstop";
+import EventBooking from "./pages/EventBooking";
+import DJDrops from "./pages/DJDrops";
+import NotFound from "./pages/NotFound";
 
 export const router = createBrowserRouter([
   {
@@ -22,20 +25,23 @@ export const router = createBrowserRouter([
     Component: Layout,
     children: [
       { index: true, Component: Home },
+      { path: "services", Component: Services },
       { path: "music", Component: Music },
+      { path: "nonstop", Component: Nonstop },
       { path: "movies", Component: Movies },
+      { path: "movies/watch/:id", Component: MoviePlayer },
       { path: "software", Component: Software },
       { path: "cart", Component: Cart },
       { path: "subscription", Component: Subscription },
-      { path: "payment", Component: Payment },
-      { path: "payment-history", Component: PaymentHistory },
       { path: "contact", Component: Contact },
       { path: "login", Component: Login },
       { path: "signup", Component: Signup },
+      { path: "profile", Component: Profile },
       { path: "admin", Component: AdminDashboard },
-      { path: "admin/payments", Component: AdminPaymentDashboard },
-      { path: "my-library", Component: MyLibrary },
-      { path: "dj-drops", Component: DJDropOrder },
+      { path: "learn-more", Component: LearnMore },
+      { path: "event-booking", Component: EventBooking },
+      { path: "dj-drops", Component: DJDrops },
+      { path: "*", Component: NotFound },
     ],
   },
 ]);

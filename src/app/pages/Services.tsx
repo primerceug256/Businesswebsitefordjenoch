@@ -1,6 +1,9 @@
-import { Music, Mic, PartyPopper, Download, Code } from 'lucide-react';
+import { Music, Mic, PartyPopper } from 'lucide-react';
+import { useNavigate } from 'react-router';
 
 export default function Services() {
+  const navigate = useNavigate();
+
   return (
     <div className="bg-black text-white min-h-screen py-16">
       <div className="container mx-auto px-4">
@@ -8,63 +11,54 @@ export default function Services() {
           Our Services
         </h1>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="bg-gray-900 p-8 rounded-2xl">
             <Music size={48} className="text-orange-600 mb-4" />
-            <h3 className="text-2xl font-bold mb-4">DJ Mixes</h3>
+            <h3 className="text-2xl font-bold mb-4">DJ Services</h3>
             <p className="text-gray-400 mb-6">
-              Download curated mixtapes and listen offline with premium DJ mixes.
+              Professional DJ services for weddings, parties, corporate events, and more.
             </p>
-            <p className="text-orange-600 font-bold text-xl">Free & premium downloads</p>
+            <ul className="text-gray-400 space-y-2 mb-6">
+              <li>• Live Performance</li>
+              <li>• Custom Playlists</li>
+              <li>• Professional Equipment</li>
+            </ul>
+            <button
+              onClick={() => navigate('/event-booking')}
+              className="w-full bg-orange-600 hover:bg-orange-700 text-white py-3 rounded-lg font-semibold transition-colors"
+            >
+              Book Your Event Today
+            </button>
           </div>
 
           <div className="bg-gray-900 p-8 rounded-2xl">
             <Mic size={48} className="text-orange-600 mb-4" />
             <h3 className="text-2xl font-bold mb-4">DJ Drops</h3>
             <p className="text-gray-400 mb-6">
-              Personalized voice drops for your brand, radio sets, and live shows.
+              Custom DJ drops with your name, professionally produced.
             </p>
-            <p className="text-orange-600 font-bold text-xl mb-4">8,000 UGX</p>
-            <a href="/dj-drops" className="inline-block bg-orange-600 hover:bg-orange-700 text-white font-bold px-6 py-2 rounded-full transition-all">
-              Order Now
-            </a>
-          </div>
-
-          <div className="bg-gray-900 p-8 rounded-2xl">
-            <Download size={48} className="text-orange-600 mb-4" />
-            <h3 className="text-2xl font-bold mb-4">Software Plug</h3>
-            <p className="text-gray-400 mb-6">
-              Download DJ software for Windows and Mac, including top mixing apps.
-            </p>
-            <p className="text-orange-600 font-bold text-xl">Fast software access</p>
-          </div>
-
-          <div className="bg-gray-900 p-8 rounded-2xl">
-            <Code size={48} className="text-orange-600 mb-4" />
-            <h3 className="text-2xl font-bold mb-4">Website Development</h3>
-            <p className="text-gray-400 mb-6">
-              Custom websites for DJs, events, and music brands built with modern design.
-            </p>
-            <p className="text-orange-600 font-bold text-xl">Request a website now</p>
+            <p className="text-orange-600 font-bold text-xl mb-6">8,000 UGX</p>
+            <button
+              onClick={() => navigate('/dj-drops')}
+              className="w-full bg-orange-600 hover:bg-orange-700 text-white py-3 rounded-lg font-semibold transition-colors"
+            >
+              Order Your DJ Drop
+            </button>
           </div>
 
           <div className="bg-gray-900 p-8 rounded-2xl">
             <PartyPopper size={48} className="text-orange-600 mb-4" />
-            <h3 className="text-2xl font-bold mb-4">Poster & Flyer Design</h3>
+            <h3 className="text-2xl font-bold mb-4">Event Booking</h3>
             <p className="text-gray-400 mb-6">
-              Create event posters, flyers, and social visuals that promote your brand.
+              Book DJ Enoch for your next event and make it unforgettable.
             </p>
-            <p className="text-orange-600 font-bold text-xl">Professional graphics</p>
-          </div>
-          <div className="md:col-span-2 xl:col-span-3 bg-orange-600/10 border border-orange-600/20 rounded-3xl p-8">
-            <h3 className="text-3xl font-bold mb-4">Need a Website?</h3>
-            <p className="text-gray-300 mb-6">
-              Launch your online presence with a tailored DJ website for music, event booking, and product promotion.
-            </p>
-            <a href="/web-development" className="inline-block bg-orange-600 hover:bg-orange-700 text-white font-bold px-8 py-4 rounded-full transition-all">
-              Contact us for website development
-            </a>
-            <p className="text-sm text-slate-400 mt-4">Application development is coming soon — stay tuned for mobile and web app services.</p>
+            <p className="text-sm text-gray-500 mb-6">Contact: +256747816444</p>
+            <button
+              onClick={() => navigate('/event-booking')}
+              className="w-full bg-orange-600 hover:bg-orange-700 text-white py-3 rounded-lg font-semibold transition-colors"
+            >
+              Book Now
+            </button>
           </div>
         </div>
       </div>
