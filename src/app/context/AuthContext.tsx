@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase } from './supabaseClient'; // Make sure this file exists
+import { projectId, publicAnonKey } from '@utils/supabase/info';
 
 interface User {
   id: string;
@@ -12,67 +12,85 @@ interface AuthContextType {
   isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
-  logout: () => Promise<void>;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// YOUR SPECIFIC URL
+const AUTH_API_URL = `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music`;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // This part automatically restores the session from LocalStorage
-    const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser({
-          id: session.user.id,
-          email: session.user.email ?? '',
-          name: session.user.user_metadata?.name,
-        });
+    // Restore session from localStorage on refresh
+    const storedUser = localStorage.getItem('dj_user');
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        localStorage.removeItem('dj_user');
       }
-      setLoading(false);
-    };
-
-    initAuth();
-
-    // Listen for changes (Login/Logout)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setUser({
-          id: session.user.id,
-          email: session.user.email ?? '',
-          name: session.user.user_metadata?.name,
-        });
-      } else {
-        setUser(null);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    }
+    setLoading(false);
   }, []);
 
   const signup = async (email: string, password: string, name: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { name } },
+    const response = await fetch(`${AUTH_API_URL}/auth/signup`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json', 
+        'Authorization': `Bearer ${publicAnonKey}` 
+      },
+      body: JSON.stringify({ email, password, name }),
     });
-    if (error) throw error;
+
+    // FIX: Check if response is valid JSON
+    const text = await response.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      throw new Error(text || 'Signup Failed'); // Returns "Fail" or "Error" as the error message
+    }
+
+    if (!response.ok) throw new Error(data.error || 'Signup Failed');
+
+    setUser(data.user);
+    localStorage.setItem('dj_user', JSON.stringify(data.user));
   };
 
   const login = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    const response = await fetch(`${AUTH_API_URL}/auth/signin`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json', 
+        'Authorization': `Bearer ${publicAnonKey}` 
+      },
+      body: JSON.stringify({ email, password }),
     });
-    if (error) throw error;
+
+    // FIX: Check if response is valid JSON
+    const text = await response.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      throw new Error(text || 'Invalid Credentials'); 
+    }
+
+    if (!response.ok) throw new Error(data.error || 'Login Failed');
+
+    setUser(data.user);
+    localStorage.setItem('dj_user', JSON.stringify(data.user));
   };
 
-  const logout = async () => {
-    await supabase.auth.signOut();
+  const logout = () => {
     setUser(null);
+    localStorage.removeItem('dj_user');
+    window.location.href = '/'; // Hard redirect to clear state
   };
 
   const isAdmin = user?.email === 'primerceug@gmail.com';
@@ -86,6 +104,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) throw new Error('useAuth must be used within AuthProvider');
+  if (!context) throw new Error('useAuth must be used within AuthProvider');
   return context;
 }
