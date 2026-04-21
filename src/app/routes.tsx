@@ -1,9 +1,13 @@
-import { createHashRouter } from "react-router"; // CHANGED THIS
+import { createHashRouter } from "react-router"; // Use HashRouter to prevent 404s
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
-// ... (import your other pages)
+import Music from "./pages/Music";
+import Movies from "./pages/Movies";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import AdminDashboard from "./pages/AdminDashboard";
 
-export const router = createHashRouter([ // CHANGED THIS
+export const router = createHashRouter([
   {
     path: "/",
     Component: Layout,
@@ -13,7 +17,7 @@ export const router = createHashRouter([ // CHANGED THIS
       { path: "movies", Component: Movies },
       { path: "login", Component: Login },
       { path: "signup", Component: Signup },
-      // ... rest of routes
+      { path: "admin", Component: AdminDashboard },
     ],
   },
 ]);
