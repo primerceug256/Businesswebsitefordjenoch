@@ -132,12 +132,17 @@ export default function Payment() {
           if (item?.type === 'subscription') {
             sessionStorage.removeItem('pending_payment_item');
             navigate('/my-library');
-          } else if (item?.type === 'software' || item?.type === 'movie') {
-            // Trigger download
+          } else if (item?.type === 'software') {
             window.location.href = item.downloadUrl || '#';
             setTimeout(() => {
               sessionStorage.removeItem('pending_payment_item');
               navigate('/software');
+            }, 2000);
+          } else if (item?.type === 'movie') {
+            window.location.href = item.downloadUrl || '#';
+            setTimeout(() => {
+              sessionStorage.removeItem('pending_payment_item');
+              navigate('/movies');
             }, 2000);
           }
         }, 2000);

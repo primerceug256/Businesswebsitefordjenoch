@@ -63,6 +63,25 @@ export default function Movies() {
     }
   };
 
+  const handleMoviePayment = (m: any) => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    const price = typeof m.price === 'number' ? m.price : 5000;
+
+    sessionStorage.setItem('pending_payment_item', JSON.stringify({
+      id: m.id,
+      name: m.title,
+      price,
+      type: 'movie',
+      downloadUrl: m.videoUrl,
+    }));
+
+    navigate('/payment');
+  };
+
   const download = (m: any) => {
     const link = document.createElement("a");
     link.href = m.videoUrl;
@@ -143,8 +162,14 @@ export default function Movies() {
             
             {/* Overlay when locked */}
             {!userHasPass && user && (
-              <div className="absolute inset-0 bg-black/70 flex items-center justify-center group-hover:bg-black/80 transition">
+              <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-4 group-hover:bg-black/80 transition">
                 <Lock className="text-orange-500" size={40} />
+                <button
+                  onClick={() => handleMoviePayment(m)}
+                  className="bg-orange-600 px-4 py-3 rounded-full text-white font-bold uppercase tracking-[0.08em] hover:bg-orange-500 transition"
+                >
+                  Buy Movie Access
+                </button>
               </div>
             )}
 
