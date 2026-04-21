@@ -1,6 +1,6 @@
 // supabase/functions/server/pesapal_logic.tsx
 
-const IS_LIVE = false; // Set to true when you go live
+const IS_LIVE = true; // Set to true when you go live
 const PESAPAL_BASE_URL = IS_LIVE 
   ? "https://pay.pesapal.com/v3/api" 
   : "https://cybil.pesapal.com/api";
