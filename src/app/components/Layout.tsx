@@ -45,8 +45,6 @@ export default function Layout() {
                   <MenuLink onClick={()=>setIsMenuOpen(false)} to="/my-library" icon={<Library/>} label="My Library" sub="Your Purchases" />
                   {user && <MenuLink onClick={()=>setIsMenuOpen(false)} to="/payment-history" icon={<Receipt/>} label="Payments" sub="View History" />}
                   {isAdmin && <MenuLink onClick={()=>setIsMenuOpen(false)} to="/admin" icon={<ShieldCheck/>} label="Admin" iconColor="text-yellow-400" sub="Manage Everything" />}
-                  {isAdmin && <MenuLink onClick={()=>setIsMenuOpen(false)} to="/admin/payments" icon={<Receipt/>} label="Payments Dashboard" iconColor="text-blue-400" sub="View All Payments
-                  {isAdmin && <MenuLink onClick={()=>setIsMenuOpen(false)} to="/admin" icon={<ShieldCheck/>} label="Admin" iconColor="text-yellow-400" sub="Manage Everything" />}
                   {isAdmin && <MenuLink onClick={()=>setIsMenuOpen(false)} to="/admin/payments" icon={<Receipt/>} label="Payments Dashboard" iconColor="text-blue-400" sub="View All Payments" />}
                 </nav>
               </div>
