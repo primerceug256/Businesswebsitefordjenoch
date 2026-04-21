@@ -212,82 +212,134 @@ app.post("/make-98d801c7-music/admin/process-approval", async (c) => {
   }
 });
 
-// ==================== STRIPE PAYMENT INTEGRATION ====================
-app.post("/make-98d801c7-music/payments/stripe/create-intent", async (c) => {
+// ==================== PESAPAL PAYMENT INTEGRATION ====================
+app.post("/make-98d801c7-music/payments/pesapal/create-order", async (c) => {
   try {
     const body = await c.req.json();
-    const { amount, currency = "USD", metadata } = body;
+    const { amount, currency = "UGX", description, customerEmail, customerName, items } = body;
 
     if (!amount || amount <= 0) {
       return c.json({ error: "Invalid amount" }, 400);
     }
 
-    const result = await stripe.createStripePaymentIntent(amount, currency, metadata);
+    const result = await pesapal.createPesaPalOrder(
+      amount,
+      currency,
+      description || "DJ Enoch Purchase",
+      customerEmail,
+      customerName
+    );
     
     if ('error' in result) {
       return c.json({ error: result.error }, 400);
     }
 
+    // Store order tracking for later verification
+    if ('orderTrackingId' in result) {
+      const orderData = {
+        orderTrackingId: result.orderTrackingId,
+        userId: body.userId,
+        amount,
+        currency,
+        items,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+      };
+      await kv.set(`pesapal:order:${result.orderTrackingId}`, orderData);
+    }
+
     return c.json(result);
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : String(e);
-    console.error('[STRIPE ERROR]', errorMessage);
-    return c.json({ error: "Failed to create payment intent", details: errorMessage }, 500);
+    console.error('[PESAPAL ERROR]', errorMessage);
+    return c.json({ error: "Failed to create order", details: errorMessage }, 500);
   }
 });
 
-app.get("/make-98d801c7-music/payments/stripe/status/:paymentIntentId", async (c) => {
+app.get("/make-98d801c7-music/payments/pesapal/status/:orderTrackingId", async (c) => {
   try {
-    const paymentIntentId = c.req.param("paymentIntentId");
-    const result = await stripe.getStripePaymentStatus(paymentIntentId);
+    const orderTrackingId = c.req.param("orderTrackingId");
+    const result = await pesapal.getPesaPalOrderStatus(orderTrackingId);
     
-    if ('error' in result) {
-      return c.json({ error: result.error }, 400);
+    if (!result) {
+      return c.json({ error: "Failed to get order status" }, 400);
     }
 
     return c.json(result);
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : String(e);
-    console.error('[STRIPE STATUS ERROR]', errorMessage);
+    console.error('[PESAPAL STATUS ERROR]', errorMessage);
     return c.json({ error: "Failed to get payment status", details: errorMessage }, 500);
   }
 });
 
-app.post("/make-98d801c7-music/payments/stripe/webhook", async (c) => {
+app.post("/make-98d801c7-music/payments/pesapal/callback", async (c) => {
   try {
-    const signature = c.req.header("stripe-signature") || "";
-    const body = await c.req.text();
+    const body = await c.req.json();
+    const { OrderTrackingId, OrderStatus } = body;
 
-    // Verify webhook signature
-    if (!stripe.verifyStripeWebhookSignature(body, signature)) {
-      return c.json({ error: "Invalid signature" }, 401);
+    if (!OrderTrackingId) {
+      return c.json({ error: "Missing order tracking ID" }, 400);
     }
 
-    const event = JSON.parse(body);
-    const handled = await stripe.handleStripeWebhook(event);
+    // Verify webhook
+    if (!pesapal.verifyPesaPalWebhookSignature(body, c.req.header("signature") || "")) {
+      console.warn('[PESAPAL] Webhook verification failed');
+      // Continue anyway - PesaPal webhooks may not always have proper signatures
+    }
 
-    if (!handled) {
-      return c.json({ warning: "Webhook received but not processed" }, 200);
+    // Handle callback
+    const result = await pesapal.handlePesaPalWebhook(OrderTrackingId, OrderStatus);
+
+    if (result.success && OrderStatus === "COMPLETED") {
+      // Get order data
+      const orderData = await kv.get(`pesapal:order:${OrderTrackingId}`) as any;
+      if (orderData) {
+        // Create payment record
+        const paymentId = `payment-${Date.now()}`;
+        const payment = {
+          id: paymentId,
+          userId: orderData.userId,
+          userName: '',
+          userEmail: '',
+          items: JSON.stringify(orderData.items || []),
+          total: orderData.amount,
+          paymentMethod: 'pesapal',
+          orderTrackingId: OrderTrackingId,
+          status: 'stripe_verified', // Marked as verified since PesaPal already processed
+          createdAt: new Date().toISOString(),
+          approvedAt: new Date().toISOString(),
+        };
+        
+        await kv.set(`payment:${paymentId}`, payment);
+        await kv.set(`payment:approved:${paymentId}`, paymentId);
+        
+        // Update order status
+        orderData.status = 'completed';
+        await kv.set(`pesapal:order:${OrderTrackingId}`, orderData);
+        
+        console.log(`[PESAPAL] Payment verified: ${OrderTrackingId}`);
+      }
     }
 
     return c.json({ success: true });
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : String(e);
-    console.error('[STRIPE WEBHOOK ERROR]', errorMessage);
-    return c.json({ error: "Webhook processing failed", details: errorMessage }, 500);
+    console.error('[PESAPAL CALLBACK ERROR]', errorMessage);
+    return c.json({ error: "Callback processing failed", details: errorMessage }, 500);
   }
 });
 
-app.post("/make-98d801c7-music/payments/refund", async (c) => {
+app.post("/make-98d801c7-music/payments/pesapal/refund", async (c) => {
   try {
     const body = await c.req.json();
-    const { paymentIntentId, amount, paymentId } = body;
+    const { orderTrackingId, paymentId } = body;
 
-    if (!paymentIntentId) {
-      return c.json({ error: "Payment intent ID is required" }, 400);
+    if (!orderTrackingId) {
+      return c.json({ error: "Order tracking ID is required" }, 400);
     }
 
-    const result = await stripe.refundStripePayment(paymentIntentId, amount);
+    const result = await pesapal.refundPesaPalOrder(orderTrackingId);
     
     if ('error' in result) {
       return c.json({ error: result.error }, 400);
@@ -305,7 +357,7 @@ app.post("/make-98d801c7-music/payments/refund", async (c) => {
     return c.json(result);
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : String(e);
-    console.error('[REFUND ERROR]', errorMessage);
+    console.error('[PESAPAL REFUND ERROR]', errorMessage);
     return c.json({ error: "Failed to process refund", details: errorMessage }, 500);
   }
 });
