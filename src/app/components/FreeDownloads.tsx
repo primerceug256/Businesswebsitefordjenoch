@@ -1,7 +1,7 @@
 import { motion } from "motion/react";
 import { Download, Music, Clock, Play, Pause, Loader } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
-import { projectId, publicAnonKey } from '@utils/supabase/info';
+import { projectId, publicAnonKey } from "/utils/supabase/info";
 
 interface MusicTrack {
   id: string;
@@ -167,7 +167,7 @@ export function FreeDownloads() {
   const fetchTracks = async () => {
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/music/tracks`,
+        `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/music/tracks`,
         {
           headers: {
             Authorization: `Bearer ${publicAnonKey}`,
@@ -180,7 +180,7 @@ export function FreeDownloads() {
       }
 
       const data = await response.json();
-      setTracks(Array.isArray(data.tracks) ? data.tracks : Object.values(data.tracks || {}));
+      setTracks(data.tracks || []);
     } catch (err) {
       console.error("Error fetching tracks:", err);
       setError(err instanceof Error ? err.message : "Failed to load tracks");

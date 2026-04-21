@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Download, Upload, AlertCircle } from 'lucide-react';
+import { Download, Upload, AlertCircle, Search } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router';
-import { projectId, publicAnonKey } from '@utils/supabase/info';
+import { useCart } from '../context/CartContext';
+import { projectId, publicAnonKey } from '/utils/supabase/info';
 
 interface Software {
   id: string;
@@ -18,10 +18,12 @@ interface Software {
 
 export default function Software() {
   const { user } = useAuth();
-  const navigate = useNavigate();
+  const { addToCart } = useCart();
   const [software, setSoftware] = useState<Software[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [availabilityFilter, setAvailabilityFilter] = useState<'all' | 'free' | 'paid'>('all');
 
   useEffect(() => {
     fetchSoftware();
@@ -30,13 +32,13 @@ export default function Software() {
   const fetchSoftware = async () => {
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/software/list`,
+        `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7/software/list`,
         {
           headers: { Authorization: `Bearer ${publicAnonKey}` },
         }
       );
       const data = await response.json();
-      setSoftware(Array.isArray(data.software) ? data.software : Object.values(data.software || {}));
+      setSoftware(data.software || []);
     } catch (error) {
       console.error('Error fetching software:', error);
     } finally {
@@ -45,8 +47,20 @@ export default function Software() {
   };
 
   const filteredSoftware = software.filter(item => {
-    if (filter === 'all') return true;
-    return item.platform.toLowerCase() === filter.toLowerCase();
+    // Platform filter
+    const platformMatch = filter === 'all' || item.platform.toLowerCase() === filter.toLowerCase();
+    
+    // Search filter
+    const searchMatch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        item.description.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Availability filter
+    const isFree = item.platform === 'Android';
+    const availabilityMatch = availabilityFilter === 'all' ||
+                               (availabilityFilter === 'free' && isFree) ||
+                               (availabilityFilter === 'paid' && !isFree);
+    
+    return platformMatch && searchMatch && availabilityMatch;
   });
 
   const handleDownload = (item: Software) => {
@@ -54,22 +68,15 @@ export default function Software() {
       // Android is free
       window.open(item.downloadUrl, '_blank');
     } else {
-      // Check if user is logged in
-      if (!user) {
-        navigate('/login');
-        return;
-      }
-
-      // Redirect to payment page
-      sessionStorage.setItem("pending_payment_item", JSON.stringify({
+      // Add to cart for payment
+      addToCart({
         id: item.id,
         name: item.title,
         price: 5000,
         type: 'software',
         platform: item.platform,
-        downloadUrl: item.downloadUrl,
-      }));
-      navigate('/payment');
+      });
+      alert('Added to cart. Please complete payment to download.');
     }
   };
 
@@ -78,7 +85,7 @@ export default function Software() {
       <div className="container mx-auto px-4">
         <div className="mb-12">
           <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-orange-600 to-pink-600 bg-clip-text text-transparent">
-            DJ Software
+            Software
           </h1>
           <div className="bg-orange-600/10 border border-orange-600/30 rounded-lg p-4 flex items-start gap-3">
             <AlertCircle className="text-orange-600 flex-shrink-0 mt-1" size={20} />
@@ -124,6 +131,37 @@ export default function Software() {
           >
             Linux
           </button>
+        </div>
+
+        <div className="flex gap-2 mb-8">
+          <button
+            onClick={() => setAvailabilityFilter('all')}
+            className={`px-4 py-2 rounded-lg ${availabilityFilter === 'all' ? 'bg-orange-600' : 'bg-gray-800'}`}
+          >
+            All
+          </button>
+          <button
+            onClick={() => setAvailabilityFilter('free')}
+            className={`px-4 py-2 rounded-lg ${availabilityFilter === 'free' ? 'bg-orange-600' : 'bg-gray-800'}`}
+          >
+            Free
+          </button>
+          <button
+            onClick={() => setAvailabilityFilter('paid')}
+            className={`px-4 py-2 rounded-lg ${availabilityFilter === 'paid' ? 'bg-orange-600' : 'bg-gray-800'}`}
+          >
+            Paid
+          </button>
+        </div>
+
+        <div className="mb-8">
+          <input
+            type="text"
+            placeholder="Search software..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-4 py-2 rounded-lg bg-gray-900 text-white border border-gray-700 focus:outline-none focus:border-orange-600"
+          />
         </div>
 
         {loading ? (

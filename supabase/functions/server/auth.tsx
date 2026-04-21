@@ -6,8 +6,11 @@ export interface User {
   email: string;
   passwordHash: string;
   name: string;
-  subscription?: { plan: string; expiresAt: string };
-  code?: string;
+  profilePhoto?: string;
+  subscription?: {
+    plan: string;
+    expiresAt: string;
+  };
   createdAt: string;
 }
 
@@ -16,24 +19,19 @@ function hashPassword(password: string): string {
 }
 
 export async function signup(email: string, password: string, name: string): Promise<User> {
-  const cleanEmail = email.toLowerCase().trim();
-  
-  // 1. CHECK IF EMAIL ALREADY EXISTS
-  const existingUserId = await kv.get(`user:email:${cleanEmail}`);
-  if (existingUserId) {
-    throw new Error('Email is already registered. Please try logging in instead.');
+  // Check if user exists
+  const existing = await kv.get(`user:email:${email}`);
+  if (existing) {
+    throw new Error('Email already registered');
   }
 
-  // 2. CREATE NEW USER
   const userId = `user-${Date.now()}`;
-  const userCode = Math.floor(10000 + Math.random() * 90000).toString();
   const now = new Date();
-  const expires = new Date(now.getTime() + 6 * 60 * 60 * 1000); // 6 hours free
+  const expires = new Date(now.getTime() + 6 * 60 * 60 * 1000); // 6 hours free for new users
 
   const user: User = {
     id: userId,
-    email: cleanEmail,
-    code: userCode,
+    email,
     passwordHash: hashPassword(password),
     name,
     subscription: {
@@ -43,25 +41,34 @@ export async function signup(email: string, password: string, name: string): Pro
     createdAt: now.toISOString(),
   };
 
-  // Save user data and email lookup
   await kv.set(`user:${userId}`, user);
-  await kv.set(`user:email:${cleanEmail}`, userId);
+  await kv.set(`user:email:${email}`, userId);
 
   return user;
 }
 
 export async function login(email: string, password: string): Promise<User> {
-  const cleanEmail = email.toLowerCase().trim();
-  const userId = await kv.get(`user:email:${cleanEmail}`);
-  
+  const userId = await kv.get(`user:email:${email}`);
   if (!userId) {
-    throw new Error('No account found with this email.');
+    throw new Error('Invalid email or password');
   }
 
   const user = await kv.get(`user:${userId}`) as User;
   if (!user || user.passwordHash !== hashPassword(password)) {
-    throw new Error('Incorrect password.');
+    throw new Error('Invalid email or password');
   }
 
   return user;
+}
+
+export async function updateUser(userId: string, updates: Partial<User>): Promise<User> {
+  const user = await kv.get(`user:${userId}`) as User;
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  const updatedUser = { ...user, ...updates };
+  await kv.set(`user:${userId}`, updatedUser);
+
+  return updatedUser;
 }

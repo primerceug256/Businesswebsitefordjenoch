@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "motion/react";
 import { X, Minus, Plus, ShoppingBag, Trash2, Download, CheckCircle } from "lucide-react";
 import { useState } from "react";
-import { projectId, publicAnonKey } from '@utils/supabase/info';
+import { projectId, publicAnonKey } from "/utils/supabase/info";
 
 interface Product {
   id: string;

@@ -1,4 +1,4 @@
-import { Facebook, Instagram, Youtube, Music2, MessageCircle } from "lucide-react";
+import { Facebook, Instagram, Twitter, Youtube, Music2, MessageCircle } from "lucide-react";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -6,7 +6,7 @@ export function Footer() {
   return (
     <footer className="bg-black border-t border-purple-500/20 py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-8">
           {/* Brand */}
           <div>
             <div className="flex items-center gap-2 mb-4">
@@ -62,24 +62,6 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Payments Section */}
-          <div>
-            <h4 className="text-white font-semibold mb-4">Accepted Payments</h4>
-            <div className="space-y-4">
-              <div className="bg-red-950/30 border border-red-500/20 p-4 rounded-xl">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                  <span className="text-red-400 text-xs font-black uppercase tracking-widest">Airtel Money</span>
-                </div>
-                <p className="text-white font-bold text-lg">+256 747 816 444</p>
-                <p className="text-gray-500 text-[10px] mt-1 uppercase">Name: DJ ENOCH PRO</p>
-              </div>
-              <p className="text-gray-400 text-xs leading-relaxed">
-                Pay for DJ drops, software, or bookings via Airtel Money for instant confirmation.
-              </p>
-            </div>
-          </div>
-
           {/* Social Media */}
           <div>
             <h4 className="text-white font-semibold mb-4">Follow Us</h4>
@@ -128,16 +110,16 @@ export function Footer() {
                 <Youtube className="w-5 h-5 text-white" />
               </a>
             </div>
-            <p className="text-gray-400 mt-4 text-xs">
-              Follow @primerce1 on TikTok for latest mixes!
+            <p className="text-gray-400 mt-4">
+              Follow @primerce1 on TikTok for latest mixes and event highlights!
             </p>
           </div>
         </div>
 
         {/* Copyright */}
         <div className="border-t border-gray-800 pt-8 text-center">
-          <p className="text-gray-500 text-xs uppercase tracking-tighter font-bold">
-            © {currentYear} DJ Enoch Pro UG. Designed for the Party Beast.
+          <p className="text-gray-500">
+            © {currentYear} DJ Enoch Pro UG. All rights reserved.
           </p>
         </div>
       </div>
