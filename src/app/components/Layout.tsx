@@ -1,5 +1,5 @@
 import { Outlet, Link, useNavigate } from 'react-router';
-import { ShoppingCart, LogOut, Music, Film, Download, ShieldCheck, Menu, X, Library, Briefcase, Zap, Headphones } from 'lucide-react';
+import { ShoppingCart, LogOut, Music, Film, Download, ShieldCheck, Menu, X, Library, Briefcase, Zap, Headphones, Receipt } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useState } from 'react';
@@ -43,7 +43,11 @@ export default function Layout() {
                 <h3 className="text-green-500 text-xs font-black uppercase mb-6 flex items-center gap-2"><Library size={14}/> Account</h3>
                 <nav className="flex flex-col gap-4">
                   <MenuLink onClick={()=>setIsMenuOpen(false)} to="/my-library" icon={<Library/>} label="My Library" sub="Your Purchases" />
+                  {user && <MenuLink onClick={()=>setIsMenuOpen(false)} to="/payment-history" icon={<Receipt/>} label="Payments" sub="View History" />}
                   {isAdmin && <MenuLink onClick={()=>setIsMenuOpen(false)} to="/admin" icon={<ShieldCheck/>} label="Admin" iconColor="text-yellow-400" sub="Manage Everything" />}
+                  {isAdmin && <MenuLink onClick={()=>setIsMenuOpen(false)} to="/admin/payments" icon={<Receipt/>} label="Payments Dashboard" iconColor="text-blue-400" sub="View All Payments
+                  {isAdmin && <MenuLink onClick={()=>setIsMenuOpen(false)} to="/admin" icon={<ShieldCheck/>} label="Admin" iconColor="text-yellow-400" sub="Manage Everything" />}
+                  {isAdmin && <MenuLink onClick={()=>setIsMenuOpen(false)} to="/admin/payments" icon={<Receipt/>} label="Payments Dashboard" iconColor="text-blue-400" sub="View All Payments" />}
                 </nav>
               </div>
             </div>

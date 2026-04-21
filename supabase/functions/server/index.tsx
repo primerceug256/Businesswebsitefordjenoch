@@ -659,6 +659,203 @@ app.post("/make-98d801c7-music/movies/check-pass", async (c) => {
   }
 });
 
+// ==================== ADMIN PAYMENT MANAGEMENT ====================
+
+// GET ALL PAYMENTS (ADMIN)
+app.get("/make-98d801c7-music/admin/payments", async (c) => {
+  try {
+    const allPayments = await kv.getByPrefix("payment:");
+    
+    // Filter out internal keys
+    const payments = Object.values(allPayments || {}).filter(
+      (p: any) => p && typeof p === 'object' && p.id && p.status
+    );
+
+    return c.json(payments.sort((a: any, b: any) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    ));
+  } catch (e) {
+    console.error('[ADMIN PAYMENTS ERROR]', e);
+    return c.json({ error: "Failed to fetch payments", payments: [] }, 500);
+  }
+});
+
+// APPROVE PAYMENT (ADMIN)
+app.post("/make-98d801c7-music/admin/approve-payment", async (c) => {
+  try {
+    const body = await c.req.json();
+    const { paymentId } = body;
+
+    if (!paymentId) {
+      return c.json({ error: "Payment ID required", code: "VALIDATION_ERROR" }, 400);
+    }
+
+    const payment = await kv.get(`payment:${paymentId}`) as any;
+    
+    if (!payment) {
+      return c.json({ error: "Payment not found", code: "NOT_FOUND" }, 404);
+    }
+
+    // Update payment status
+    payment.status = "approved";
+    payment.approvedAt = new Date().toISOString();
+    await kv.set(`payment:${paymentId}`, payment);
+
+    // Send approval email
+    try {
+      await email.sendPaymentApprovedEmail(
+        payment.userEmail,
+        payment.userName,
+        paymentId,
+        JSON.parse(payment.items),
+        payment.total
+      );
+    } catch (emailErr) {
+      console.error('[EMAIL ERROR]', emailErr);
+    }
+
+    console.log(`[ADMIN] Payment approved: ${paymentId}`);
+    
+    return c.json({ success: true, message: "Payment approved" });
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    console.error('[APPROVE PAYMENT ERROR]', errorMessage);
+    return c.json({ error: "Failed to approve payment", code: "INTERNAL_ERROR" }, 500);
+  }
+});
+
+// REJECT PAYMENT (ADMIN)
+app.post("/make-98d801c7-music/admin/reject-payment", async (c) => {
+  try {
+    const body = await c.req.json();
+    const { paymentId } = body;
+
+    if (!paymentId) {
+      return c.json({ error: "Payment ID required", code: "VALIDATION_ERROR" }, 400);
+    }
+
+    const payment = await kv.get(`payment:${paymentId}`) as any;
+    
+    if (!payment) {
+      return c.json({ error: "Payment not found", code: "NOT_FOUND" }, 404);
+    }
+
+    // Update payment status
+    payment.status = "rejected";
+    await kv.set(`payment:${paymentId}`, payment);
+
+    // Send rejection email
+    try {
+      await email.sendPaymentRejectedEmail(
+        payment.userEmail,
+        payment.userName,
+        paymentId,
+        "Your payment was rejected by admin. Please try again or contact support."
+      );
+    } catch (emailErr) {
+      console.error('[EMAIL ERROR]', emailErr);
+    }
+
+    console.log(`[ADMIN] Payment rejected: ${paymentId}`);
+    
+    return c.json({ success: true, message: "Payment rejected" });
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    console.error('[REJECT PAYMENT ERROR]', errorMessage);
+    return c.json({ error: "Failed to reject payment", code: "INTERNAL_ERROR" }, 500);
+  }
+});
+
+// REFUND PAYMENT (ADMIN)
+app.post("/make-98d801c7-music/admin/refund-payment", async (c) => {
+  try {
+    const body = await c.req.json();
+    const { paymentId, reason = "Admin refund" } = body;
+
+    if (!paymentId) {
+      return c.json({ error: "Payment ID required", code: "VALIDATION_ERROR" }, 400);
+    }
+
+    const payment = await kv.get(`payment:${paymentId}`) as any;
+    
+    if (!payment) {
+      return c.json({ error: "Payment not found", code: "NOT_FOUND" }, 404);
+    }
+
+    if (payment.status === "refunded") {
+      return c.json({ error: "Payment already refunded", code: "INVALID_STATE" }, 400);
+    }
+
+    // Update payment status
+    payment.status = "refunded";
+    payment.refundedAt = new Date().toISOString();
+    payment.refundReason = reason;
+    await kv.set(`payment:${paymentId}`, payment);
+
+    // Send refund email
+    try {
+      await email.sendRefundNotificationEmail(
+        payment.userEmail,
+        payment.userName,
+        paymentId,
+        payment.total,
+        reason
+      );
+    } catch (emailErr) {
+      console.error('[EMAIL ERROR]', emailErr);
+    }
+
+    console.log(`[ADMIN] Payment refunded: ${paymentId} (${reason})`);
+    
+    return c.json({ success: true, message: "Payment refunded successfully" });
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    console.error('[REFUND PAYMENT ERROR]', errorMessage);
+    return c.json({ error: "Failed to refund payment", code: "INTERNAL_ERROR" }, 500);
+  }
+});
+
+// USER REQUEST REFUND
+app.post("/make-98d801c7-music/payments/request-refund", async (c) => {
+  try {
+    const body = await c.req.json();
+    const { paymentId } = body;
+
+    if (!paymentId) {
+      return c.json({ error: "Payment ID required", code: "VALIDATION_ERROR" }, 400);
+    }
+
+    const payment = await kv.get(`payment:${paymentId}`) as any;
+    
+    if (!payment) {
+      return c.json({ error: "Payment not found", code: "NOT_FOUND" }, 404);
+    }
+
+    // Mark as refund requested
+    payment.refundRequested = true;
+    payment.refundRequestedAt = new Date().toISOString();
+    await kv.set(`payment:${paymentId}`, payment);
+
+    // Send admin notification
+    try {
+      await email.sendAdminNotificationEmail(
+        "Refund Request",
+        `User ${payment.userName} (${payment.userEmail}) requested refund for payment ${paymentId}. Amount: ${payment.total} UGX`
+      );
+    } catch (emailErr) {
+      console.error('[EMAIL ERROR]', emailErr);
+    }
+
+    console.log(`[REFUND REQUEST] User requested refund: ${paymentId}`);
+    
+    return c.json({ success: true, message: "Refund request submitted" });
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    console.error('[REFUND REQUEST ERROR]', errorMessage);
+    return c.json({ error: "Failed to request refund", code: "INTERNAL_ERROR" }, 500);
+  }
+});
+
 // SOFTWARE LIST
 app.get("/make-98d801c7-music/software/list", async (c) => {
   try {

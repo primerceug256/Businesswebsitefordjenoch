@@ -296,26 +296,6 @@ export default function Cart() {
     </div>
   );
 }
-import { useState } from 'react';
-import { useCart } from '../context/CartContext';
-import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router';
-import { projectId, publicAnonKey } from '/utils/supabase/info';
-
-export default function Cart() {
-  const { items, clearCart, total } = useCart();
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  
-  // Airtel Money state
-  const [proof, setProof] = useState<File | null>(null);
-  const [tid, setTid] = useState('');
-  
-  // UI state
-  const [loading, setLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'pesapal' | 'airtel'>('pesapal');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   const pendingSub = JSON.parse(sessionStorage.getItem("pending_item") || "null");
   const totalAmount = total + (pendingSub?.price || 0);

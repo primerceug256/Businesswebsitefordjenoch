@@ -161,3 +161,65 @@ export async function getPendingEmails(): Promise<EmailNotification[]> {
     return [];
   }
 }
+
+export async function sendRefundNotificationEmail(
+  userEmail: string,
+  userName: string,
+  paymentId: string,
+  amount: number,
+  reason: string
+): Promise<boolean> {
+  try {
+    const emailNotif: EmailNotification = {
+      id: `email-${Date.now()}`,
+      toEmail: userEmail,
+      subject: 'Refund Processed - DJ Enoch',
+      type: 'payment_rejected', // Reuse rejected type for now
+      data: {
+        userName,
+        paymentId,
+        amount,
+        reason,
+        refund: true,
+      },
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+
+    await kv.set(`email:${emailNotif.id}`, emailNotif);
+    console.log(`[EMAIL QUEUED] Refund notification for ${userEmail}`);
+    
+    return true;
+  } catch (error) {
+    console.error('Failed to queue refund email:', error);
+    return false;
+  }
+}
+
+export async function sendAdminNotificationEmail(
+  subject: string,
+  message: string,
+  adminEmail: string = Deno.env.get("ADMIN_EMAIL") || "admin@djenoch.com"
+): Promise<boolean> {
+  try {
+    const emailNotif: EmailNotification = {
+      id: `email-${Date.now()}`,
+      toEmail: adminEmail,
+      subject: `[ADMIN] ${subject}`,
+      type: 'payment_submitted',
+      data: {
+        message,
+      },
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+
+    await kv.set(`email:${emailNotif.id}`, emailNotif);
+    console.log(`[EMAIL QUEUED] Admin notification: ${subject}`);
+    
+    return true;
+  } catch (error) {
+    console.error('Failed to queue admin email:', error);
+    return false;
+  }
+}
