@@ -95,27 +95,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const googleLogin = async (credential: string) => {
-    const response = await fetch(`${AUTH_API_URL}/auth/google`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json', 
-        'Authorization': `Bearer ${publicAnonKey}` 
-      },
-      body: JSON.stringify({ credential }),
-    });
-
-    const text = await response.text();
-    let data;
     try {
-      data = JSON.parse(text);
-    } catch (e) {
-      throw new Error(text || 'Google Login Failed'); 
+      const response = await fetch(`${AUTH_API_URL}/auth/google`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${publicAnonKey}` 
+        },
+        body: JSON.stringify({ credential }),
+      });
+
+      console.log("Google login response status:", response.status);
+      
+      const text = await response.text();
+      console.log("Google login response text:", text.substring(0, 200));
+      
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        console.error("Failed to parse response as JSON:", text);
+        throw new Error(`Server response error: ${text || 'No response'}`); 
+      }
+
+      if (!response.ok) throw new Error(data.error || 'Google Login Failed');
+
+      setUser(data.user);
+      localStorage.setItem('dj_user', JSON.stringify(data.user));
+    } catch (error) {
+      console.error("Google login error details:", error);
+      throw error;
     }
-
-    if (!response.ok) throw new Error(data.error || 'Google Login Failed');
-
-    setUser(data.user);
-    localStorage.setItem('dj_user', JSON.stringify(data.user));
   };
 
   const isAdmin = user?.email === 'primerceug@gmail.com';

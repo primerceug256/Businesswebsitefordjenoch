@@ -71,8 +71,16 @@ app.post("/make-server-98d801c7/auth/login", async (c) => {
 // Google OAuth Login
 app.post("/make-server-98d801c7/auth/google", async (c) => {
   try {
-    const { credential } = await c.req.json();
-    const user = await auth.googleLogin(credential);
+    console.log("Google login request received");
+    const body = await c.req.json();
+    console.log("Request body received:", body ? "credential present" : "no credential");
+    
+    if (!body.credential) {
+      return c.json({ error: "No credential provided" }, 400);
+    }
+
+    const user = await auth.googleLogin(body.credential);
+    console.log("Google login successful for user:", user.email);
 
     // Remove password hash from response
     const { passwordHash, ...userWithoutPassword } = user;

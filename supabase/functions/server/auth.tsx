@@ -1,15 +1,23 @@
 import * as kv from "./kv_store.tsx";
 import { createHash } from "node:crypto";
+import { decode as base64Decode } from "https://deno.land/std@0.208.0/encoding/base64.ts";
 
 // Simple JWT decode (without verification - Google token is already verified by client)
 function decodeJwt(token: string): any {
   try {
     const parts = token.split('.');
     if (parts.length !== 3) throw new Error('Invalid token');
-    const decoded = JSON.parse(atob(parts[1]));
-    return decoded;
+    
+    // Decode the payload (second part)
+    const payload = parts[1];
+    // Add padding if needed
+    const padded = payload + '='.repeat((4 - payload.length % 4) % 4);
+    const decoded = base64Decode(padded);
+    const text = new TextDecoder().decode(decoded);
+    return JSON.parse(text);
   } catch (e) {
-    throw new Error('Invalid JWT token');
+    console.error("JWT decode error:", e);
+    throw new Error('Invalid JWT token: ' + String(e));
   }
 }
 
