@@ -2,213 +2,40 @@ import { Hono } from "npm:hono";
 import { cors } from "npm:hono/cors";
 import * as kv from "./kv_store.tsx";
 import * as music from "./music.tsx";
-<<<<<<< HEAD
 import * as payments from "./payments.tsx";
 import * as email from "./email.tsx";
 import * as receipts from "./receipts.tsx";
 import * as pesapal from "./pesapal.tsx";
-=======
-import * as pesapal from "./pesapal_logic.tsx";
->>>>>>> fde0bbd30f7a22cb23b31404af6ffce6070014f9
 
 const app = new Hono();
 app.use("*", cors());
 
-// 1. START PESAPAL PAYMENT
-app.post("/make-server-98d801c7/payments/initiate-pesapal", async (c) => {
+// ==================== PESAPAL PAYMENT INTEGRATION ====================
+
+// 1. CREATE PESAPAL ORDER
+app.post("/make-98d801c7-music/payments/pesapal/create-order", async (c) => {
   try {
-<<<<<<< HEAD
-    const fd = await c.req.formData();
-    const userId = fd.get("userId") as string;
-    const userName = fd.get("userName") as string;
-    const userEmail = fd.get("userEmail") as string;
-    const items = fd.get("items") as string;
-    const total = parseFloat(fd.get("total") as string);
-    const transactionId = fd.get("transactionId") as string || "";
-    const paymentMethod = (fd.get("paymentMethod") as string) || "airtel";
-    const stripePaymentIntentId = fd.get("stripePaymentIntentId") as string || undefined;
+    const body = await c.req.json();
+    const { amount, currency = "UGX", description, customerEmail, customerName, userId, items } = body;
 
     // Validate input
-    const validation = payments.validatePaymentInput(userId, userName, items, total, transactionId, paymentMethod);
-    if (!validation.valid) {
-      return c.json({ error: validation.error, code: 'VALIDATION_ERROR' }, 400);
+    if (!amount || amount <= 0) {
+      return c.json({ error: "Invalid amount", code: "VALIDATION_ERROR" }, 400);
+    }
+
+    if (!customerEmail) {
+      return c.json({ error: "Customer email required", code: "VALIDATION_ERROR" }, 400);
     }
 
     // Check rate limiting
     if (!payments.checkRateLimit(userId)) {
-      return c.json({ error: 'Too many requests. Please wait before trying again.', code: 'RATE_LIMIT_EXCEEDED' }, 429);
+      return c.json({ 
+        error: "Too many requests. Please wait before trying again.", 
+        code: "RATE_LIMIT_EXCEEDED" 
+      }, 429);
     }
 
-    // Upload proof for Airtel payments
-    let proofUrl: string | undefined;
-    if (paymentMethod === 'airtel') {
-      const proof = fd.get("proof") as File;
-      if (!proof) {
-        return c.json({ error: 'Proof file is required for Airtel Money payments', code: 'MISSING_PROOF' }, 400);
-      }
-      const uploadRes = await music.uploadMusicFile(`proofs/${Date.now()}`, await proof.arrayBuffer(), proof.type);
-      proofUrl = uploadRes.publicUrl;
-    }
-
-    // Submit payment
-    const payment = await payments.submitPayment(
-      userId,
-      userName,
-      items,
-      total,
-      transactionId,
-      proofUrl,
-      fd.get("userCode") as string || undefined,
-      userEmail,
-      paymentMethod as any,
-      stripePaymentIntentId
-    );
-
-    if ('error' in payment) {
-      return c.json(payment, 400);
-    }
-
-    // Send confirmation email
-    await email.sendPaymentSubmittedEmail(userEmail, userName, payment.id, total, paymentMethod);
-
-    // Create receipt for automatic payments (Stripe)
-    if (paymentMethod === 'stripe' && stripePaymentIntentId) {
-      const receipt = await receipts.createReceipt(
-        payment.id,
-        userId,
-        items,
-        total,
-        userName,
-        userEmail
-      );
-      if (receipt) {
-        payment.receipt = { id: receipt.id };
-      }
-    }
-
-    return c.json({ success: true, payment });
-  } catch (e) {
-    const errorMessage = e instanceof Error ? e.message : String(e);
-    console.error('[PAYMENT ERROR]', errorMessage);
-    return c.json({ 
-      error: 'Failed to process payment. Please try again.',
-      code: 'INTERNAL_ERROR',
-      details: errorMessage 
-    }, 500);
-  }
-=======
-    const { orderId, total, email, name, items, userId } = await c.req.json();
-    const token = await pesapal.getPesapalToken();
-    const ipnId = await pesapal.registerIPN(token);
-    
-    const orderRequest = await pesapal.createPesapalOrder(token, ipnId, { orderId, total, email, name });
-
-    // Save pending order
-    await kv.set(`order:${orderId}`, { id: orderId, userId, items, total, status: "pending", createdAt: new Date().toISOString() });
-    
-    return c.json({ redirect_url: orderRequest.redirect_url });
-  } catch (e) { return c.json({ error: String(e) }, 500); }
->>>>>>> fde0bbd30f7a22cb23b31404af6ffce6070014f9
-});
-
-// 2. PESAPAL IPN (AUTOMATIC VERIFICATION)
-app.get("/make-server-98d801c7/payments/pesapal-ipn", async (c) => {
-  const trackingId = c.req.query("OrderTrackingId");
-  const reference = c.req.query("OrderMerchantReference");
-
-<<<<<<< HEAD
-app.post("/make-98d801c7-music/admin/process-approval", async (c) => {
-  try {
-    const body = await c.req.json();
-    const { action, paymentId, requestType, dropId, reason } = body as any;
-=======
-  if (trackingId && reference) {
-    const token = await pesapal.getPesapalToken();
-    const res = await fetch(`https://cybil.pesapal.com/api/Transactions/GetTransactionStatus?orderTrackingId=${trackingId}`, {
-        headers: { "Authorization": `Bearer ${token}` }
-    });
-    const data = await res.json();
->>>>>>> fde0bbd30f7a22cb23b31404af6ffce6070014f9
-
-    if (data.payment_status_description === "Completed") {
-        const order = await kv.get(`order:${reference}`);
-        if (order) {
-            order.status = "completed";
-            await kv.set(`order:${reference}`, order);
-            // Auto-unlock software/music downloads here
-        }
-    }
-<<<<<<< HEAD
-
-    if (requestType === 'payment') {
-      const payment = await kv.get(`payment:${paymentId}`) as any;
-      if (!payment) return c.json({ error: 'Payment not found' }, 404);
-
-      if (action === 'accept') {
-        await payments.approvePayment(paymentId);
-        
-        // Send approval email
-        if (payment.userEmail) {
-          await email.sendPaymentApprovedEmail(
-            payment.userEmail,
-            payment.userName,
-            paymentId,
-            payment.items,
-            payment.total
-          );
-        }
-
-        // Create receipt
-        if (payment.items && payment.total) {
-          await receipts.createReceipt(
-            paymentId,
-            payment.userId,
-            payment.items,
-            payment.total,
-            payment.userName,
-            payment.userEmail || ''
-          );
-        }
-      } else {
-        await payments.rejectPayment(paymentId, reason);
-        
-        // Send rejection email
-        if (payment.userEmail) {
-          await email.sendPaymentRejectedEmail(
-            payment.userEmail,
-            payment.userName,
-            paymentId,
-            reason
-          );
-        }
-      }
-
-      return c.json({ success: true });
-    }
-
-    if (action === 'accept') {
-      await payments.approvePayment(paymentId);
-    } else {
-      await payments.rejectPayment(paymentId, reason);
-    }
-    return c.json({ success: true });
-  } catch (e) {
-    const errorMessage = e instanceof Error ? e.message : String(e);
-    console.error('[APPROVAL ERROR]', errorMessage);
-    return c.json({ error: "Approval processing failed", details: errorMessage }, 500);
-  }
-});
-
-// ==================== PESAPAL PAYMENT INTEGRATION ====================
-app.post("/make-98d801c7-music/payments/pesapal/create-order", async (c) => {
-  try {
-    const body = await c.req.json();
-    const { amount, currency = "UGX", description, customerEmail, customerName, items } = body;
-
-    if (!amount || amount <= 0) {
-      return c.json({ error: "Invalid amount" }, 400);
-    }
-
+    // Create PesaPal order
     const result = await pesapal.createPesaPalOrder(
       amount,
       currency,
@@ -218,189 +45,539 @@ app.post("/make-98d801c7-music/payments/pesapal/create-order", async (c) => {
     );
     
     if ('error' in result) {
-      return c.json({ error: result.error }, 400);
+      console.error('[PESAPAL ORDER ERROR]', result.error);
+      return c.json({ error: result.error, code: "PESAPAL_ERROR" }, 400);
     }
 
-    // Store order tracking for later verification
-    if ('orderTrackingId' in result) {
-      const orderData = {
-        orderTrackingId: result.orderTrackingId,
-        userId: body.userId,
-        amount,
-        currency,
-        items,
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-      };
-      await kv.set(`pesapal:order:${result.orderTrackingId}`, orderData);
-    }
+    // Store order tracking for verification
+    const orderData = {
+      orderTrackingId: result.orderTrackingId,
+      userId,
+      amount,
+      currency,
+      items: items || [],
+      customerEmail,
+      customerName,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+    };
+    
+    await kv.set(`pesapal:order:${result.orderTrackingId}`, orderData);
 
-    return c.json(result);
+    return c.json({
+      success: true,
+      orderTrackingId: result.orderTrackingId,
+      redirectUrl: result.redirectUrl
+    });
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : String(e);
-    console.error('[PESAPAL ERROR]', errorMessage);
-    return c.json({ error: "Failed to create order", details: errorMessage }, 500);
+    console.error('[PESAPAL CREATE ORDER ERROR]', errorMessage);
+    return c.json({ 
+      error: "Failed to create order",
+      code: "INTERNAL_ERROR",
+      details: errorMessage 
+    }, 500);
   }
 });
 
+// 2. CHECK PESAPAL ORDER STATUS
 app.get("/make-98d801c7-music/payments/pesapal/status/:orderTrackingId", async (c) => {
   try {
     const orderTrackingId = c.req.param("orderTrackingId");
-    const result = await pesapal.getPesaPalOrderStatus(orderTrackingId);
-    
-    if (!result) {
-      return c.json({ error: "Failed to get order status" }, 400);
+
+    if (!orderTrackingId) {
+      return c.json({ error: "Order tracking ID required", code: "VALIDATION_ERROR" }, 400);
     }
 
-    return c.json(result);
+    const result = await pesapal.getPesaPalOrderStatus(orderTrackingId);
+    
+    if ('error' in result) {
+      return c.json({ error: result.error, code: "PESAPAL_ERROR" }, 400);
+    }
+
+    return c.json({
+      success: true,
+      ...result
+    });
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : String(e);
     console.error('[PESAPAL STATUS ERROR]', errorMessage);
-    return c.json({ error: "Failed to get payment status", details: errorMessage }, 500);
+    return c.json({ 
+      error: "Failed to get payment status",
+      code: "INTERNAL_ERROR",
+      details: errorMessage 
+    }, 500);
   }
 });
 
+// 3. PESAPAL WEBHOOK CALLBACK
 app.post("/make-98d801c7-music/payments/pesapal/callback", async (c) => {
   try {
     const body = await c.req.json();
     const { OrderTrackingId, OrderStatus } = body;
 
     if (!OrderTrackingId) {
-      return c.json({ error: "Missing order tracking ID" }, 400);
+      console.warn('[PESAPAL] Missing order tracking ID in callback');
+      return c.json({ error: "Missing order tracking ID", code: "VALIDATION_ERROR" }, 400);
     }
 
-    // Verify webhook
-    if (!pesapal.verifyPesaPalWebhookSignature(body, c.req.header("signature") || "")) {
-      console.warn('[PESAPAL] Webhook verification failed');
-      // Continue anyway - PesaPal webhooks may not always have proper signatures
+    // Verify webhook signature if available
+    const signature = c.req.header("signature");
+    if (signature && !pesapal.verifyPesaPalWebhookSignature(body, signature)) {
+      console.warn('[PESAPAL] Webhook signature verification failed');
+      // Continue anyway - process the callback
     }
 
-    // Handle callback
-    const result = await pesapal.handlePesaPalWebhook(OrderTrackingId, OrderStatus);
+    // Get order data
+    const orderData = await kv.get(`pesapal:order:${OrderTrackingId}`) as any;
+    
+    if (!orderData) {
+      console.warn('[PESAPAL] Order not found:', OrderTrackingId);
+      return c.json({ 
+        status: "ok",
+        message: "Order not found (may be already processed)" 
+      });
+    }
 
-    if (result.success && OrderStatus === "COMPLETED") {
-      // Get order data
-      const orderData = await kv.get(`pesapal:order:${OrderTrackingId}`) as any;
-      if (orderData) {
-        // Create payment record
-        const paymentId = `payment-${Date.now()}`;
-        const payment = {
-          id: paymentId,
-          userId: orderData.userId,
-          userName: '',
-          userEmail: '',
-          items: JSON.stringify(orderData.items || []),
-          total: orderData.amount,
-          paymentMethod: 'pesapal',
-          orderTrackingId: OrderTrackingId,
-          status: 'stripe_verified', // Marked as verified since PesaPal already processed
-          createdAt: new Date().toISOString(),
-          approvedAt: new Date().toISOString(),
-        };
+    // Handle payment completion
+    if (OrderStatus === "COMPLETED") {
+      // Create payment record automatically
+      const paymentId = `payment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const payment = {
+        id: paymentId,
+        userId: orderData.userId,
+        userName: orderData.customerName,
+        userEmail: orderData.customerEmail,
+        items: JSON.stringify(orderData.items),
+        total: orderData.amount,
+        paymentMethod: "pesapal",
+        orderTrackingId: OrderTrackingId,
+        status: "approved", // Auto-approved since PesaPal verified
+        createdAt: new Date().toISOString(),
+        approvedAt: new Date().toISOString(),
+      };
+      
+      // Store payment
+      await kv.set(`payment:${paymentId}`, payment);
+      await kv.set(`payment:approved:${paymentId}`, paymentId);
+      
+      // Update order status
+      orderData.status = "completed";
+      orderData.paymentId = paymentId;
+      await kv.set(`pesapal:order:${OrderTrackingId}`, orderData);
+
+      // Create receipt
+      try {
+        const receipt = await receipts.createReceipt(
+          paymentId,
+          orderData.userId,
+          orderData.items,
+          orderData.amount,
+          orderData.customerName,
+          orderData.customerEmail
+        );
         
-        await kv.set(`payment:${paymentId}`, payment);
-        await kv.set(`payment:approved:${paymentId}`, paymentId);
-        
-        // Update order status
-        orderData.status = 'completed';
-        await kv.set(`pesapal:order:${OrderTrackingId}`, orderData);
-        
-        console.log(`[PESAPAL] Payment verified: ${OrderTrackingId}`);
+        if (receipt) {
+          payment.receiptId = receipt.id;
+          await kv.set(`payment:${paymentId}`, payment);
+        }
+      } catch (receiptErr) {
+        console.error('[RECEIPT CREATION ERROR]', receiptErr);
+        // Continue - payment is still valid even if receipt fails
+      }
+
+      // Send approval email
+      try {
+        await email.sendPaymentApprovedEmail(
+          orderData.customerEmail,
+          orderData.customerName,
+          paymentId,
+          orderData.items,
+          orderData.amount
+        );
+      } catch (emailErr) {
+        console.error('[EMAIL ERROR]', emailErr);
+        // Continue - payment is still valid even if email fails
+      }
+
+      console.log(`[PESAPAL] Payment completed: ${OrderTrackingId} → ${paymentId}`);
+    } 
+    else if (OrderStatus === "FAILED" || OrderStatus === "CANCELLED") {
+      // Mark order as failed
+      orderData.status = "failed";
+      await kv.set(`pesapal:order:${OrderTrackingId}`, orderData);
+
+      console.log(`[PESAPAL] Payment ${OrderStatus.toLowerCase()}: ${OrderTrackingId}`);
+
+      // Send failure email if available
+      try {
+        if (orderData.customerEmail) {
+          const reason = OrderStatus === "CANCELLED" 
+            ? "Payment was cancelled by the customer" 
+            : "Payment processing failed";
+          await email.sendPaymentRejectedEmail(
+            orderData.customerEmail,
+            orderData.customerName,
+            OrderTrackingId,
+            reason
+          );
+        }
+      } catch (emailErr) {
+        console.error('[EMAIL ERROR]', emailErr);
       }
     }
 
-    return c.json({ success: true });
+    return c.json({ 
+      status: "ok",
+      message: "Callback processed"
+    });
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : String(e);
     console.error('[PESAPAL CALLBACK ERROR]', errorMessage);
-    return c.json({ error: "Callback processing failed", details: errorMessage }, 500);
+    return c.json({ 
+      error: "Callback processing failed",
+      code: "INTERNAL_ERROR",
+      details: errorMessage 
+    }, 500);
   }
 });
 
-app.post("/make-98d801c7-music/payments/pesapal/refund", async (c) => {
+// ==================== AIRTEL MONEY (MANUAL VERIFICATION) ====================
+
+// 4. SUBMIT AIRTEL MONEY PAYMENT (WITH PROOF)
+app.post("/make-98d801c7-music/payments/submit", async (c) => {
   try {
-    const body = await c.req.json();
-    const { orderTrackingId, paymentId } = body;
+    const fd = await c.req.formData();
+    const userId = fd.get("userId") as string;
+    const userName = fd.get("userName") as string;
+    const userEmail = fd.get("userEmail") as string;
+    const items = fd.get("items") as string;
+    const total = parseFloat(fd.get("total") as string);
+    const transactionId = fd.get("transactionId") as string || "";
+    const paymentMethod = (fd.get("paymentMethod") as string) || "airtel";
+    const proof = fd.get("proof") as File;
 
-    if (!orderTrackingId) {
-      return c.json({ error: "Order tracking ID is required" }, 400);
+    // Validate input
+    const validation = payments.validatePaymentInput(userId, userName, items, total, transactionId, paymentMethod);
+    if (!validation.valid) {
+      return c.json({ 
+        error: validation.error, 
+        code: "VALIDATION_ERROR" 
+      }, 400);
     }
 
-    const result = await pesapal.refundPesaPalOrder(orderTrackingId);
-    
-    if ('error' in result) {
-      return c.json({ error: result.error }, 400);
+    // Check rate limiting
+    if (!payments.checkRateLimit(userId)) {
+      return c.json({ 
+        error: "Too many requests. Please wait before trying again.",
+        code: "RATE_LIMIT_EXCEEDED"
+      }, 429);
     }
 
-    // Update payment status if refund successful
-    if (paymentId) {
-      const payment = await kv.get(`payment:${paymentId}`) as any;
-      if (payment) {
-        payment.status = 'refunded';
-        await kv.set(`payment:${paymentId}`, payment);
+    // Upload proof if provided
+    let proofUrl: string | undefined;
+    if (proof && paymentMethod === "airtel") {
+      try {
+        const uploadRes = await music.uploadMusicFile(
+          `proofs/${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          await proof.arrayBuffer(),
+          proof.type
+        );
+        proofUrl = uploadRes.publicUrl;
+      } catch (uploadErr) {
+        console.error('[PROOF UPLOAD ERROR]', uploadErr);
+        return c.json({ 
+          error: "Failed to upload proof",
+          code: "UPLOAD_ERROR"
+        }, 400);
       }
     }
 
-    return c.json(result);
+    // Submit payment
+    const paymentId = `payment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const payment = {
+      id: paymentId,
+      userId,
+      userName,
+      userEmail,
+      items,
+      total,
+      transactionId,
+      proofUrl,
+      paymentMethod,
+      status: "pending_approval", // Waiting for admin approval
+      createdAt: new Date().toISOString(),
+    };
+
+    // Store payment
+    await kv.set(`payment:${paymentId}`, payment);
+    await kv.set(`payment:pending:${paymentId}`, paymentId);
+
+    // Send submission confirmation email
+    try {
+      await email.sendPaymentSubmittedEmail(
+        userEmail,
+        userName,
+        paymentId,
+        total,
+        paymentMethod
+      );
+    } catch (emailErr) {
+      console.error('[EMAIL ERROR]', emailErr);
+      // Continue - payment is still valid
+    }
+
+    console.log(`[AIRTEL] Payment submitted: ${paymentId}`);
+
+    return c.json({ 
+      success: true,
+      paymentId,
+      message: "Payment submitted. Waiting for admin approval."
+    });
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : String(e);
-    console.error('[PESAPAL REFUND ERROR]', errorMessage);
-    return c.json({ error: "Failed to process refund", details: errorMessage }, 500);
+    console.error('[PAYMENT SUBMISSION ERROR]', errorMessage);
+    return c.json({ 
+      error: "Failed to process payment",
+      code: "INTERNAL_ERROR",
+      details: errorMessage 
+    }, 500);
+  }
+});
+
+// ==================== ADMIN PAYMENT MANAGEMENT ====================
+
+// 5. APPROVE/REJECT PAYMENT (ADMIN ONLY)
+app.post("/make-98d801c7-music/admin/process-approval", async (c) => {
+  try {
+    const body = await c.req.json();
+    const { action, paymentId, reason } = body;
+
+    if (!paymentId) {
+      return c.json({ error: "Payment ID required", code: "VALIDATION_ERROR" }, 400);
+    }
+
+    const payment = await kv.get(`payment:${paymentId}`) as any;
+    if (!payment) {
+      return c.json({ error: "Payment not found", code: "NOT_FOUND" }, 404);
+    }
+
+    if (action === "accept") {
+      // Approve payment
+      payment.status = "approved";
+      payment.approvedAt = new Date().toISOString();
+
+      // Remove from pending
+      await kv.delete(`payment:pending:${paymentId}`);
+      // Add to approved
+      await kv.set(`payment:approved:${paymentId}`, paymentId);
+      // Update payment record
+      await kv.set(`payment:${paymentId}`, payment);
+
+      // Create receipt
+      try {
+        const receipt = await receipts.createReceipt(
+          paymentId,
+          payment.userId,
+          JSON.parse(payment.items),
+          payment.total,
+          payment.userName,
+          payment.userEmail
+        );
+        
+        if (receipt) {
+          payment.receiptId = receipt.id;
+          await kv.set(`payment:${paymentId}`, payment);
+        }
+      } catch (receiptErr) {
+        console.error('[RECEIPT CREATION ERROR]', receiptErr);
+      }
+
+      // Send approval email
+      try {
+        await email.sendPaymentApprovedEmail(
+          payment.userEmail,
+          payment.userName,
+          paymentId,
+          JSON.parse(payment.items),
+          payment.total
+        );
+      } catch (emailErr) {
+        console.error('[EMAIL ERROR]', emailErr);
+      }
+
+      console.log(`[ADMIN] Payment approved: ${paymentId}`);
+
+    } else if (action === "reject") {
+      // Reject payment
+      payment.status = "rejected";
+      payment.rejectedAt = new Date().toISOString();
+      payment.rejectionReason = reason;
+
+      // Remove from pending
+      await kv.delete(`payment:pending:${paymentId}`);
+      // Add to rejected
+      await kv.set(`payment:rejected:${paymentId}`, paymentId);
+      // Update payment record
+      await kv.set(`payment:${paymentId}`, payment);
+
+      // Send rejection email
+      try {
+        await email.sendPaymentRejectedEmail(
+          payment.userEmail,
+          payment.userName,
+          paymentId,
+          reason || "Your payment was rejected. Please contact support."
+        );
+      } catch (emailErr) {
+        console.error('[EMAIL ERROR]', emailErr);
+      }
+
+      console.log(`[ADMIN] Payment rejected: ${paymentId}`);
+    } else {
+      return c.json({ error: "Invalid action", code: "VALIDATION_ERROR" }, 400);
+    }
+
+    return c.json({ 
+      success: true,
+      paymentId,
+      status: payment.status
+    });
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    console.error('[ADMIN APPROVAL ERROR]', errorMessage);
+    return c.json({ 
+      error: "Approval processing failed",
+      code: "INTERNAL_ERROR",
+      details: errorMessage 
+    }, 500);
   }
 });
 
 // ==================== PAYMENT HISTORY & RECEIPTS ====================
+
+// 6. GET USER PAYMENT HISTORY
 app.get("/make-98d801c7-music/payments/user/:userId", async (c) => {
   try {
     const userId = c.req.param("userId");
     const paymentHistory = await payments.getPaymentHistory(userId);
-    return c.json({ payments: paymentHistory });
+    
+    return c.json({ 
+      success: true,
+      payments: paymentHistory 
+    });
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : String(e);
     console.error('[PAYMENT HISTORY ERROR]', errorMessage);
-    return c.json({ error: "Failed to fetch payment history", details: errorMessage }, 500);
+    return c.json({ 
+      error: "Failed to fetch payment history",
+      code: "INTERNAL_ERROR",
+      details: errorMessage 
+    }, 500);
   }
 });
 
+// 7. GET USER RECEIPTS
 app.get("/make-98d801c7-music/receipts/user/:userId", async (c) => {
   try {
     const userId = c.req.param("userId");
     const userReceipts = await receipts.getUserReceipts(userId);
-    return c.json({ receipts: userReceipts });
+    
+    return c.json({ 
+      success: true,
+      receipts: userReceipts 
+    });
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : String(e);
     console.error('[RECEIPTS ERROR]', errorMessage);
-    return c.json({ error: "Failed to fetch receipts", details: errorMessage }, 500);
+    return c.json({ 
+      error: "Failed to fetch receipts",
+      code: "INTERNAL_ERROR",
+      details: errorMessage 
+    }, 500);
   }
 });
 
+// 8. GET SPECIFIC RECEIPT
 app.get("/make-98d801c7-music/receipts/:receiptId", async (c) => {
   try {
     const receiptId = c.req.param("receiptId");
     const receipt = await kv.get(`receipt:${receiptId}`);
     
     if (!receipt) {
-      return c.json({ error: "Receipt not found" }, 404);
+      return c.json({ 
+        error: "Receipt not found",
+        code: "NOT_FOUND"
+      }, 404);
     }
 
-    return c.json(receipt);
+    return c.json({ 
+      success: true,
+      receipt
+    });
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : String(e);
     console.error('[RECEIPT FETCH ERROR]', errorMessage);
-    return c.json({ error: "Failed to fetch receipt", details: errorMessage }, 500);
-=======
->>>>>>> fde0bbd30f7a22cb23b31404af6ffce6070014f9
+    return c.json({ 
+      error: "Failed to fetch receipt",
+      code: "INTERNAL_ERROR",
+      details: errorMessage 
+    }, 500);
   }
-  return c.json({ status: "ok" });
 });
 
+// ==================== CONTENT ENDPOINTS ====================
+
 // MUSIC TRACKS LIST
-app.get("/make-server-98d801c7/music/tracks", async (c) => c.json({ tracks: await kv.getByPrefix("track:") }));
+app.get("/make-server-98d801c7/music/tracks", async (c) => {
+  try {
+    const tracks = await kv.getByPrefix("track:");
+    return c.json({ 
+      success: true,
+      tracks: tracks || [] 
+    });
+  } catch (e) {
+    console.error('[MUSIC TRACKS ERROR]', e);
+    return c.json({ 
+      error: "Failed to fetch tracks",
+      tracks: [] 
+    }, 500);
+  }
+});
 
 // MOVIE LIST
-app.get("/make-server-98d801c7/movies/list", async (c) => c.json({ movies: await kv.getByPrefix("movie:") }));
+app.get("/make-server-98d801c7/movies/list", async (c) => {
+  try {
+    const movies = await kv.getByPrefix("movie:");
+    return c.json({ 
+      success: true,
+      movies: movies || [] 
+    });
+  } catch (e) {
+    console.error('[MOVIES LIST ERROR]', e);
+    return c.json({ 
+      error: "Failed to fetch movies",
+      movies: [] 
+    }, 500);
+  }
+});
 
 // SOFTWARE LIST
-app.get("/make-server-98d801c7/software/list", async (c) => c.json({ software: await kv.getByPrefix("software:") }));
+app.get("/make-server-98d801c7/software/list", async (c) => {
+  try {
+    const software = await kv.getByPrefix("software:");
+    return c.json({ 
+      success: true,
+      software: software || [] 
+    });
+  } catch (e) {
+    console.error('[SOFTWARE LIST ERROR]', e);
+    return c.json({ 
+      error: "Failed to fetch software",
+      software: [] 
+    }, 500);
+  }
+});
 
+// START SERVER
 Deno.serve(app.fetch);
