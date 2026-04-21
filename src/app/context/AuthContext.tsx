@@ -12,6 +12,7 @@ interface AuthContextType {
   isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
+  googleLogin: (credential: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -93,10 +94,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = '/'; // Hard redirect to clear state
   };
 
+  const googleLogin = async (credential: string) => {
+    const response = await fetch(`${AUTH_API_URL}/auth/google`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json', 
+        'Authorization': `Bearer ${publicAnonKey}` 
+      },
+      body: JSON.stringify({ credential }),
+    });
+
+    const text = await response.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      throw new Error(text || 'Google Login Failed'); 
+    }
+
+    if (!response.ok) throw new Error(data.error || 'Google Login Failed');
+
+    setUser(data.user);
+    localStorage.setItem('dj_user', JSON.stringify(data.user));
+  };
+
   const isAdmin = user?.email === 'primerceug@gmail.com';
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, isAdmin, login, signup, googleLogin, logout }}>
       {!loading && children}
     </AuthContext.Provider>
   );

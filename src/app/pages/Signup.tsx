@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { GoogleLogin } from '@react-oauth/google';
 
 export default function Signup() {
   const [name, setName] = useState('');
@@ -9,7 +10,7 @@ export default function Signup() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signup } = useAuth();
+  const { signup, googleLogin } = useAuth();
   const navigate = useNavigate();
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -43,6 +44,33 @@ export default function Signup() {
             {loading ? <Loader2 className="animate-spin mx-auto" /> : 'Create Account'}
           </button>
         </form>
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-800"></div>
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-gray-900 text-gray-500">Or continue with</span>
+          </div>
+        </div>
+        <div className="flex justify-center">
+          <GoogleLogin
+            onSuccess={async (credentialResponse) => {
+              try {
+                setError('');
+                setLoading(true);
+                if (credentialResponse.credential) {
+                  await googleLogin(credentialResponse.credential);
+                  navigate('/');
+                }
+              } catch (err: any) {
+                setError(err.message);
+              } finally {
+                setLoading(false);
+              }
+            }}
+            onError={() => setError('Google signup failed')}
+          />
+        </div>
         <p className="text-center mt-6 text-gray-500 text-sm font-bold">Already a member? <Link to="/login" className="text-orange-500">Login</Link></p>
       </div>
     </div>

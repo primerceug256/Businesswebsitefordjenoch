@@ -68,6 +68,22 @@ app.post("/make-server-98d801c7/auth/login", async (c) => {
   }
 });
 
+// Google OAuth Login
+app.post("/make-server-98d801c7/auth/google", async (c) => {
+  try {
+    const { credential } = await c.req.json();
+    const user = await auth.googleLogin(credential);
+
+    // Remove password hash from response
+    const { passwordHash, ...userWithoutPassword } = user;
+
+    return c.json({ user: userWithoutPassword });
+  } catch (error) {
+    console.error("Google login error:", error);
+    return c.json({ error: String(error) }, 400);
+  }
+});
+
 // Update user profile
 app.put("/make-server-98d801c7/user/update", async (c) => {
   try {
