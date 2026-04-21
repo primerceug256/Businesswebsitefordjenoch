@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Download, Upload, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router';
-import { projectId, publicAnonKey } from "../../../utils/supabase/info";
+import { projectId, publicAnonKey } from '@utils/supabase/info';
 
 interface Software {
   id: string;

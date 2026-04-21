@@ -1,7 +1,7 @@
 import { motion } from "motion/react";
 import { Download, Music, Clock, Play, Pause, Loader } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
-import { projectId, publicAnonKey } from "../../../utils/supabase/info";
+import { projectId, publicAnonKey } from '@utils/supabase/info';
 
 interface MusicTrack {
   id: string;

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router';
-import { projectId, publicAnonKey } from "../../../utils/supabase/info";
+import { projectId, publicAnonKey } from '@utils/supabase/info';
 import { Trash2, RefreshCw, Music, Film, Package, Check, X, Send, Image as ImageIcon } from 'lucide-react';
 
 export default function AdminDashboard() {

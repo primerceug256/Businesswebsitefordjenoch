@@ -1,6 +1,6 @@
 --- START OF FILE Businesswebsitefordjenoch-main/src/app/components/uploads/SoftwareUploadForm.tsx ---
 import { useState } from "react";
-import { projectId, publicAnonKey } from "../../../../utils/supabase/info";
+import { projectId, publicAnonKey } from '@utils/supabase/info';
 
 export function SoftwareUploadForm({ onSuccess }: { onSuccess: () => void }) {
   const [file, setFile] = useState<File | null>(null);

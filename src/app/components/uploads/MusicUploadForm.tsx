@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Upload, Music, Loader, CheckCircle } from "lucide-react";
-import { projectId, publicAnonKey } from "../../../../utils/supabase/info";
+import { projectId, publicAnonKey } from '@utils/supabase/info';
 
 export function MusicUploadForm({ onSuccess }: { onSuccess: () => void }) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);

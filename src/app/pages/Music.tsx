@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Download, Music as MusicIcon, Play, Pause, Loader } from 'lucide-react';
-import { projectId, publicAnonKey } from "../../../utils/supabase/info";
+import { projectId, publicAnonKey } from '@utils/supabase/info';
 
 export default function Music() {
   const [tracks, setTracks] = useState<any[]>([]);
