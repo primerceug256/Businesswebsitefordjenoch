@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Clock, Camera } from 'lucide-react';
-import { projectId } from "/utils/supabase/info";
+import { projectId } from '@utils/supabase/info';
 
 export default function Profile() {
   const { user, isAdmin } = useAuth();

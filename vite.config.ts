@@ -28,6 +28,8 @@ export default defineConfig({
     alias: {
       // Alias @ to the src directory
       '@': path.resolve(__dirname, './src'),
+      // Alias @utils to the repository utils folder for shared Supabase config
+      '@utils': path.resolve(__dirname, './utils'),
     },
   },
 })

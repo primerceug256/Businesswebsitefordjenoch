@@ -36,7 +36,7 @@ export default function Software() {
         }
       );
       const data = await response.json();
-      setSoftware(Array.isArray(data.software) ? data.software : []);
+      setSoftware(Array.isArray(data.software) ? data.software : Object.values(data.software || {}));
     } catch (error) {
       console.error('Error fetching software:', error);
     } finally {

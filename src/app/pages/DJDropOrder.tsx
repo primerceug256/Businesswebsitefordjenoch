@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router';
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { projectId, publicAnonKey } from '@utils/supabase/info';
 import { Headphones, Zap, Loader2 } from 'lucide-react';
 
 export default function DJDropOrder() {

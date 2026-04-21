@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Smartphone, Download, ShieldCheck, Zap, Loader, Search } from 'lucide-react';
-import { projectId, publicAnonKey } from "/utils/supabase/info";
+import { projectId, publicAnonKey } from '@utils/supabase/info';
 
 export default function Apps() {
   const [apps, setApps] = useState<any[]>([]);
@@ -13,7 +13,8 @@ export default function Apps() {
     })
     .then(res => res.json())
     .then(data => {
-      const appList = (data.software || []).filter((item: any) => 
+      const softwareList = Array.isArray(data.software) ? data.software : Object.values(data.software || {});
+      const appList = softwareList.filter((item: any) => 
         item.platform === 'Android' || item.platform === 'iOS' || item.category.toLowerCase().includes('app')
       );
       setApps(appList);

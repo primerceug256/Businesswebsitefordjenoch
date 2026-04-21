@@ -1,7 +1,7 @@
 import { motion } from "motion/react";
 import { Package, Download, Monitor, Loader } from "lucide-react";
 import { useState, useEffect } from "react";
-import { projectId, publicAnonKey } from "/utils/supabase/info";
+import { projectId, publicAnonKey } from '@utils/supabase/info';
 
 interface Software {
   id: string;
@@ -103,7 +103,7 @@ export function SoftwareSection() {
       }
 
       const data = await response.json();
-      setSoftware(data.software || []);
+      setSoftware(Array.isArray(data.software) ? data.software : Object.values(data.software || {}));
     } catch (err) {
       console.error("Error fetching software:", err);
       setError(err instanceof Error ? err.message : "Failed to load software");

@@ -1,5 +1,5 @@
 // Payment utilities for frontend operations
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { projectId, publicAnonKey } from '@utils/supabase/info';
 
 export interface PaymentResponse {
   success?: boolean;

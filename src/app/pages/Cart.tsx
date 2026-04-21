@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router';
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { projectId, publicAnonKey } from '@utils/supabase/info';
 
 export default function Cart() {
   const { items, clearCart, total } = useCart();

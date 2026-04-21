@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router';
 import { Download, Search, Filter, ChevronDown, Eye, RotateCcw } from 'lucide-react';
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { projectId, publicAnonKey } from '@utils/supabase/info';
 
 interface Payment {
   id: string;

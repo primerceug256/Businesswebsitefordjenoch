@@ -17,8 +17,8 @@ export default function Music() {
         { headers: { Authorization: `Bearer ${publicAnonKey}` } }
       );
       const data = await response.json();
-      // We take everything the server gives us
-      setTracks(Array.isArray(data.tracks) ? data.tracks : []);
+      const tracks = Array.isArray(data.tracks) ? data.tracks : Object.values(data.tracks || {});
+      setTracks(tracks);
     } catch (error) {
       console.error('Error fetching tracks:', error);
     } finally {

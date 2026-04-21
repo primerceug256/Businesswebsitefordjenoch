@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Play, Download, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { projectId, publicAnonKey } from "/utils/supabase/info";
+import { projectId, publicAnonKey } from '@utils/supabase/info';
 
 export default function Movies() {
   const navigate = useNavigate();
@@ -27,7 +27,7 @@ export default function Movies() {
         }
 
         const d = await response.json();
-        setMovies(Array.isArray(d.movies) ? d.movies : []);
+        setMovies(Array.isArray(d.movies) ? d.movies : Object.values(d.movies || {}));
 
         // Check if user has a valid pass
         if (user) {

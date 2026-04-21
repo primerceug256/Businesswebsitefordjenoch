@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { projectId, publicAnonKey } from '@utils/supabase/info';
 import { createClient } from '@supabase/supabase-js';
 
 // Initialize Supabase Client for Google Auth

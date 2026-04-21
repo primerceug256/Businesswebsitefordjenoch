@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { ArrowLeft, Download } from 'lucide-react';
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { projectId, publicAnonKey } from '@utils/supabase/info';
 
 export default function MoviePlayer() {
   const { id } = useParams();
@@ -35,7 +35,8 @@ export default function MoviePlayer() {
         }
       );
       const data = await response.json();
-      const foundMovie = data.movies.find((m: any) => m.id === id);
+      const movies = Array.isArray(data.movies) ? data.movies : Object.values(data.movies || {});
+      const foundMovie = movies.find((m: any) => m.id === id);
       setMovie(foundMovie);
     } catch (error) {
       console.error('Error fetching movie:', error);
