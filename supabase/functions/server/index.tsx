@@ -4,6 +4,9 @@ import * as auth from "./auth.tsx";
 import * as kv from "./kv_store.tsx";
 import * as music from "./music.tsx";
 import * as payments from "./payments.tsx";
+import * as email from "./email.tsx";
+import * as receipts from "./receipts.tsx";
+import * as pesapal from "./pesapal.tsx";
 
 const app = new Hono();
 app.use("*", cors());
@@ -40,26 +43,83 @@ app.delete("/make-98d801c7-music/:type/delete/:id", async (c) => {
 app.post("/make-98d801c7-music/payments/submit", async (c) => {
   try {
     const fd = await c.req.formData();
-    const id = `pay-${Date.now()}`;
-    const proof = fd.get("proof") as File;
-    const res = await music.uploadMusicFile(`proofs/${id}`, await proof.arrayBuffer(), proof.type);
+    const userId = fd.get("userId") as string;
+    const userName = fd.get("userName") as string;
+    const userEmail = fd.get("userEmail") as string;
+    const items = fd.get("items") as string;
+    const total = parseFloat(fd.get("total") as string);
+    const transactionId = fd.get("transactionId") as string || "";
+    const paymentMethod = (fd.get("paymentMethod") as string) || "airtel";
+    const stripePaymentIntentId = fd.get("stripePaymentIntentId") as string || undefined;
 
-    const data = {
-      id,
-      userId: fd.get("userId"),
-      userCode: fd.get("userCode"),
-      userName: fd.get("userName"),
-      items: fd.get("items"),
-      total: fd.get("total"),
-      transactionId: fd.get("transactionId"),
-      proofUrl: res.publicUrl,
-      status: "pending",
-      createdAt: new Date().toISOString()
-    };
-    await kv.set(`payment:${id}`, data);
-    await kv.set(`payment:pending:${id}`, id);
-    return c.json({ success: true });
-  } catch (e) { return c.json({ error: "Fail" }, 500); }
+    // Validate input
+    const validation = payments.validatePaymentInput(userId, userName, items, total, transactionId, paymentMethod);
+    if (!validation.valid) {
+      return c.json({ error: validation.error, code: 'VALIDATION_ERROR' }, 400);
+    }
+
+    // Check rate limiting
+    if (!payments.checkRateLimit(userId)) {
+      return c.json({ error: 'Too many requests. Please wait before trying again.', code: 'RATE_LIMIT_EXCEEDED' }, 429);
+    }
+
+    // Upload proof for Airtel payments
+    let proofUrl: string | undefined;
+    if (paymentMethod === 'airtel') {
+      const proof = fd.get("proof") as File;
+      if (!proof) {
+        return c.json({ error: 'Proof file is required for Airtel Money payments', code: 'MISSING_PROOF' }, 400);
+      }
+      const uploadRes = await music.uploadMusicFile(`proofs/${Date.now()}`, await proof.arrayBuffer(), proof.type);
+      proofUrl = uploadRes.publicUrl;
+    }
+
+    // Submit payment
+    const payment = await payments.submitPayment(
+      userId,
+      userName,
+      items,
+      total,
+      transactionId,
+      proofUrl,
+      fd.get("userCode") as string || undefined,
+      userEmail,
+      paymentMethod as any,
+      stripePaymentIntentId
+    );
+
+    if ('error' in payment) {
+      return c.json(payment, 400);
+    }
+
+    // Send confirmation email
+    await email.sendPaymentSubmittedEmail(userEmail, userName, payment.id, total, paymentMethod);
+
+    // Create receipt for automatic payments (Stripe)
+    if (paymentMethod === 'stripe' && stripePaymentIntentId) {
+      const receipt = await receipts.createReceipt(
+        payment.id,
+        userId,
+        items,
+        total,
+        userName,
+        userEmail
+      );
+      if (receipt) {
+        payment.receipt = { id: receipt.id };
+      }
+    }
+
+    return c.json({ success: true, payment });
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    console.error('[PAYMENT ERROR]', errorMessage);
+    return c.json({ 
+      error: 'Failed to process payment. Please try again.',
+      code: 'INTERNAL_ERROR',
+      details: errorMessage 
+    }, 500);
+  }
 });
 
 app.get("/make-98d801c7-music/admin/pending", async (c) => {
@@ -78,7 +138,7 @@ app.get("/make-98d801c7-music/admin/pending", async (c) => {
 app.post("/make-98d801c7-music/admin/process-approval", async (c) => {
   try {
     const body = await c.req.json();
-    const { action, paymentId, requestType, dropId } = body as any;
+    const { action, paymentId, requestType, dropId, reason } = body as any;
 
     if (requestType === 'drop') {
       const drop = await kv.get(`drop:${dropId}`);
@@ -93,14 +153,202 @@ app.post("/make-98d801c7-music/admin/process-approval", async (c) => {
       return c.json({ success: true });
     }
 
+    if (requestType === 'payment') {
+      const payment = await kv.get(`payment:${paymentId}`) as any;
+      if (!payment) return c.json({ error: 'Payment not found' }, 404);
+
+      if (action === 'accept') {
+        await payments.approvePayment(paymentId);
+        
+        // Send approval email
+        if (payment.userEmail) {
+          await email.sendPaymentApprovedEmail(
+            payment.userEmail,
+            payment.userName,
+            paymentId,
+            payment.items,
+            payment.total
+          );
+        }
+
+        // Create receipt
+        if (payment.items && payment.total) {
+          await receipts.createReceipt(
+            paymentId,
+            payment.userId,
+            payment.items,
+            payment.total,
+            payment.userName,
+            payment.userEmail || ''
+          );
+        }
+      } else {
+        await payments.rejectPayment(paymentId, reason);
+        
+        // Send rejection email
+        if (payment.userEmail) {
+          await email.sendPaymentRejectedEmail(
+            payment.userEmail,
+            payment.userName,
+            paymentId,
+            reason
+          );
+        }
+      }
+
+      return c.json({ success: true });
+    }
+
     if (action === 'accept') {
       await payments.approvePayment(paymentId);
     } else {
-      await payments.rejectPayment(paymentId);
+      await payments.rejectPayment(paymentId, reason);
     }
     return c.json({ success: true });
   } catch (e) {
-    return c.json({ error: "Approval processing failed" }, 500);
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    console.error('[APPROVAL ERROR]', errorMessage);
+    return c.json({ error: "Approval processing failed", details: errorMessage }, 500);
+  }
+});
+
+// ==================== STRIPE PAYMENT INTEGRATION ====================
+app.post("/make-98d801c7-music/payments/stripe/create-intent", async (c) => {
+  try {
+    const body = await c.req.json();
+    const { amount, currency = "USD", metadata } = body;
+
+    if (!amount || amount <= 0) {
+      return c.json({ error: "Invalid amount" }, 400);
+    }
+
+    const result = await stripe.createStripePaymentIntent(amount, currency, metadata);
+    
+    if ('error' in result) {
+      return c.json({ error: result.error }, 400);
+    }
+
+    return c.json(result);
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    console.error('[STRIPE ERROR]', errorMessage);
+    return c.json({ error: "Failed to create payment intent", details: errorMessage }, 500);
+  }
+});
+
+app.get("/make-98d801c7-music/payments/stripe/status/:paymentIntentId", async (c) => {
+  try {
+    const paymentIntentId = c.req.param("paymentIntentId");
+    const result = await stripe.getStripePaymentStatus(paymentIntentId);
+    
+    if ('error' in result) {
+      return c.json({ error: result.error }, 400);
+    }
+
+    return c.json(result);
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    console.error('[STRIPE STATUS ERROR]', errorMessage);
+    return c.json({ error: "Failed to get payment status", details: errorMessage }, 500);
+  }
+});
+
+app.post("/make-98d801c7-music/payments/stripe/webhook", async (c) => {
+  try {
+    const signature = c.req.header("stripe-signature") || "";
+    const body = await c.req.text();
+
+    // Verify webhook signature
+    if (!stripe.verifyStripeWebhookSignature(body, signature)) {
+      return c.json({ error: "Invalid signature" }, 401);
+    }
+
+    const event = JSON.parse(body);
+    const handled = await stripe.handleStripeWebhook(event);
+
+    if (!handled) {
+      return c.json({ warning: "Webhook received but not processed" }, 200);
+    }
+
+    return c.json({ success: true });
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    console.error('[STRIPE WEBHOOK ERROR]', errorMessage);
+    return c.json({ error: "Webhook processing failed", details: errorMessage }, 500);
+  }
+});
+
+app.post("/make-98d801c7-music/payments/refund", async (c) => {
+  try {
+    const body = await c.req.json();
+    const { paymentIntentId, amount, paymentId } = body;
+
+    if (!paymentIntentId) {
+      return c.json({ error: "Payment intent ID is required" }, 400);
+    }
+
+    const result = await stripe.refundStripePayment(paymentIntentId, amount);
+    
+    if ('error' in result) {
+      return c.json({ error: result.error }, 400);
+    }
+
+    // Update payment status if refund successful
+    if (paymentId) {
+      const payment = await kv.get(`payment:${paymentId}`) as any;
+      if (payment) {
+        payment.status = 'refunded';
+        await kv.set(`payment:${paymentId}`, payment);
+      }
+    }
+
+    return c.json(result);
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    console.error('[REFUND ERROR]', errorMessage);
+    return c.json({ error: "Failed to process refund", details: errorMessage }, 500);
+  }
+});
+
+// ==================== PAYMENT HISTORY & RECEIPTS ====================
+app.get("/make-98d801c7-music/payments/user/:userId", async (c) => {
+  try {
+    const userId = c.req.param("userId");
+    const paymentHistory = await payments.getPaymentHistory(userId);
+    return c.json({ payments: paymentHistory });
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    console.error('[PAYMENT HISTORY ERROR]', errorMessage);
+    return c.json({ error: "Failed to fetch payment history", details: errorMessage }, 500);
+  }
+});
+
+app.get("/make-98d801c7-music/receipts/user/:userId", async (c) => {
+  try {
+    const userId = c.req.param("userId");
+    const userReceipts = await receipts.getUserReceipts(userId);
+    return c.json({ receipts: userReceipts });
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    console.error('[RECEIPTS ERROR]', errorMessage);
+    return c.json({ error: "Failed to fetch receipts", details: errorMessage }, 500);
+  }
+});
+
+app.get("/make-98d801c7-music/receipts/:receiptId", async (c) => {
+  try {
+    const receiptId = c.req.param("receiptId");
+    const receipt = await kv.get(`receipt:${receiptId}`);
+    
+    if (!receipt) {
+      return c.json({ error: "Receipt not found" }, 404);
+    }
+
+    return c.json(receipt);
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    console.error('[RECEIPT FETCH ERROR]', errorMessage);
+    return c.json({ error: "Failed to fetch receipt", details: errorMessage }, 500);
   }
 });
 

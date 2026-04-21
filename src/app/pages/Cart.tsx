@@ -8,47 +8,346 @@ export default function Cart() {
   const { items, clearCart, total } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
+  
+  // Airtel Money state
   const [proof, setProof] = useState<File | null>(null);
   const [tid, setTid] = useState('');
+  
+  // UI state
   const [loading, setLoading] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'airtel' | 'stripe'>('stripe');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const pendingSub = JSON.parse(sessionStorage.getItem("pending_item") || "null");
+  const totalAmount = total + (pendingSub?.price || 0);
 
-  const submit = async (e: any) => {
+  const submitAirtelPayment = async (e: any) => {
     e.preventDefault();
-    if (!proof || !tid) return alert("Fill all fields");
+    setError('');
+    
+    if (!proof || !tid) {
+      setError("Please fill in all fields");
+      return;
+    }
+    
     setLoading(true);
 
-    const fd = new FormData();
-    fd.append("userId", user?.id || "");
-    fd.append("userCode", user?.code || user?.id || "");
-    fd.append("userName", user?.name || user?.email || "");
-    fd.append("transactionId", tid);
-    fd.append("proof", proof);
-    fd.append("items", JSON.stringify([...items, pendingSub].filter(Boolean)));
-    fd.append("total", (total + (pendingSub?.price || 0)).toString());
+    try {
+      const fd = new FormData();
+      fd.append("userId", user?.id || "");
+      fd.append("userCode", user?.code || user?.id || "");
+      fd.append("userName", user?.name || user?.email || "");
+      fd.append("userEmail", user?.email || "");
+      fd.append("transactionId", tid);
+      fd.append("proof", proof);
+      fd.append("paymentMethod", "airtel");
+      fd.append("items", JSON.stringify([...items, pendingSub].filter(Boolean)));
+      fd.append("total", totalAmount.toString());
 
-    const res = await fetch(`https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/payments/submit`, {
-      method: 'POST', headers: { Authorization: `Bearer ${publicAnonKey}` }, body: fd
-    });
+      const res = await fetch(`https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/payments/submit`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${publicAnonKey}` },
+        body: fd
+      });
 
-    if (res.ok) {
-      alert("Sent! Waiting for Admin approval.");
-      clearCart(); sessionStorage.removeItem("pending_item");
-      navigate('/my-library');
-    } else { alert("Submission error"); }
-    setLoading(false);
+      if (res.ok) {
+        const data = await res.json();
+        setSuccess("Payment submitted! Waiting for Admin approval.");
+        setTimeout(() => {
+          clearCart();
+          sessionStorage.removeItem("pending_item");
+          navigate('/my-library');
+        }, 2000);
+      } else {
+        const errorData = await res.json();
+        setError(errorData.error || "Submission error. Please try again.");
+      }
+    } catch (err) {
+      setError("Network error. Please try again.");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  const submitStripePayment = async (e: any) => {
+    e.preventDefault();
+    setError('');
+    
+    setLoading(true);
+
+    try {
+      // Create Stripe payment intent
+      const intentRes = await fetch(`https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/payments/stripe/create-intent`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${publicAnonKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: Math.round(totalAmount * 100) / 100,
+          currency: 'USD',
+          metadata: {
+            userId: user?.id,
+            userName: user?.name || user?.email,
+          },
+        }),
+      });
+
+      if (!intentRes.ok) {
+        const err = await intentRes.json();
+        setError(err.error || "Failed to create payment intent");
+        setLoading(false);
+        return;
+      }
+
+      const { clientSecret, paymentIntentId } = await intentRes.json();
+
+      // Load Stripe.js
+      const stripeScript = document.createElement('script');
+      stripeScript.src = 'https://js.stripe.com/v3/';
+      stripeScript.onload = async () => {
+        // @ts-ignore
+        const stripe = window.Stripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+        // @ts-ignore
+        const elements = stripe.elements();
+        const cardElement = elements.create('card');
+        
+        // Create a container for card element
+        const cardContainer = document.getElementById('stripe-card-element');
+        if (cardContainer) {
+          cardContainer.innerHTML = '';
+          cardElement.mount(cardContainer);
+
+          // Handle real-time validation errors
+          cardElement.addEventListener('change', (event) => {
+            if (event.error) {
+              setError(event.error.message);
+            } else {
+              setError('');
+            }
+          });
+
+          // Confirm payment
+          // @ts-ignore
+          const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+            payment_method: {
+              card: cardElement,
+              billing_details: {
+                name: user?.name || user?.email,
+                email: user?.email,
+              },
+            },
+          });
+
+          if (confirmError) {
+            setError(confirmError.message || "Payment failed");
+            setLoading(false);
+          } else if (paymentIntent?.status === 'succeeded') {
+            // Submit payment to backend
+            const submitRes = await fetch(`https://${projectId}.supabase.co/functions/v1/make-98d801c7-music/payments/submit`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${publicAnonKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                userId: user?.id,
+                userCode: user?.code || user?.id,
+                userName: user?.name || user?.email,
+                userEmail: user?.email,
+                items: JSON.stringify([...items, pendingSub].filter(Boolean)),
+                total: totalAmount,
+                paymentMethod: 'stripe',
+                stripePaymentIntentId: paymentIntentId,
+              }),
+            });
+
+            if (submitRes.ok) {
+              setSuccess("Payment successful! Your items are ready for download.");
+              setTimeout(() => {
+                clearCart();
+                sessionStorage.removeItem("pending_item");
+                navigate('/my-library');
+              }, 2000);
+            } else {
+              setError("Payment processed but order creation failed. Please contact support.");
+            }
+          }
+        }
+      };
+      document.head.appendChild(stripeScript);
+    } catch (err) {
+      setError("Payment error. Please try again.");
+      console.error(err);
+      setLoading(false);
+    }
+  };
+
+  if (items.length === 0 && !pendingSub) {
+    return (
+      <div className="min-h-screen bg-black text-white p-6 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">Your cart is empty</h2>
+          <button
+            onClick={() => navigate('/')}
+            className="bg-orange-600 px-6 py-3 rounded-lg font-bold hover:bg-orange-700 transition"
+          >
+            Continue Shopping
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-black text-white p-6">
-      <form onSubmit={submit} className="max-w-md mx-auto bg-slate-900 p-8 rounded-[40px] border border-white/5 space-y-4">
-        <h2 className="text-xl font-black uppercase text-orange-500">Confirm Payment</h2>
-        <p className="text-xs text-slate-500 italic">Pay to: +256 747 816 444 (DJ ENOCH PRO)</p>
-        <input placeholder="Transaction ID" className="w-full bg-black p-4 rounded-xl border border-white/5" onChange={e=>setTid(e.target.value)} required />
-        <input type="file" className="w-full text-xs" onChange={e=>setProof(e.target.files?.[0] || null)} required />
-        <button disabled={loading} className="w-full bg-orange-600 py-4 rounded-xl font-black uppercase">{loading ? "Sending..." : "Submit Proof"}</button>
-      </form>
+    <div className="min-h-screen bg-gradient-to-b from-black to-slate-900 text-white p-6">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-4xl font-black mb-8 text-center">Checkout</h1>
+
+        <div className="grid md:grid-cols-3 gap-8">
+          {/* Cart Items */}
+          <div className="md:col-span-2">
+            <div className="bg-slate-800/50 rounded-2xl border border-white/10 p-6 mb-6">
+              <h2 className="text-xl font-bold mb-4 text-orange-500">Order Summary</h2>
+              
+              <div className="space-y-4">
+                {items.map((item) => (
+                  <div key={item.id} className="flex justify-between items-center pb-4 border-b border-white/10">
+                    <div>
+                      <p className="font-bold">{item.name}</p>
+                      {item.djName && <p className="text-sm text-gray-400">by {item.djName}</p>}
+                    </div>
+                    <p className="font-bold text-orange-500">${item.price.toFixed(2)}</p>
+                  </div>
+                ))}
+                
+                {pendingSub && (
+                  <div className="flex justify-between items-center pb-4 border-b border-white/10">
+                    <div>
+                      <p className="font-bold">{pendingSub.name}</p>
+                      <p className="text-sm text-gray-400">Subscription</p>
+                    </div>
+                    <p className="font-bold text-orange-500">${pendingSub.price.toFixed(2)}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-orange-500/30">
+                <div className="flex justify-between items-center text-lg font-black">
+                  <span>Total:</span>
+                  <span className="text-orange-500">${totalAmount.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Form */}
+          <div className="md:col-span-1">
+            <div className="bg-gradient-to-b from-orange-900/20 to-slate-900/50 rounded-2xl border border-orange-500/30 p-6">
+              <h2 className="text-xl font-black uppercase text-orange-500 mb-6">Payment</h2>
+
+              {/* Payment Method Tabs */}
+              <div className="flex gap-2 mb-6">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('stripe')}
+                  className={`flex-1 py-2 rounded-lg font-bold transition ${
+                    paymentMethod === 'stripe'
+                      ? 'bg-orange-600 text-white'
+                      : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+                  }`}
+                >
+                  Stripe
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('airtel')}
+                  className={`flex-1 py-2 rounded-lg font-bold transition ${
+                    paymentMethod === 'airtel'
+                      ? 'bg-orange-600 text-white'
+                      : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+                  }`}
+                >
+                  Airtel
+                </button>
+              </div>
+
+              {/* Error Message */}
+              {error && (
+                <div className="mb-4 p-3 bg-red-900/30 border border-red-500 rounded-lg text-red-200 text-sm">
+                  {error}
+                </div>
+              )}
+
+              {/* Success Message */}
+              {success && (
+                <div className="mb-4 p-3 bg-green-900/30 border border-green-500 rounded-lg text-green-200 text-sm">
+                  {success}
+                </div>
+              )}
+
+              {/* Stripe Form */}
+              {paymentMethod === 'stripe' && (
+                <form onSubmit={submitStripePayment} className="space-y-4">
+                  <div id="stripe-card-element" className="p-3 bg-black rounded-lg border border-white/10" />
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-orange-600 py-3 rounded-lg font-black uppercase hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? "Processing..." : `Pay $${totalAmount.toFixed(2)}`}
+                  </button>
+                </form>
+              )}
+
+              {/* Airtel Money Form */}
+              {paymentMethod === 'airtel' && (
+                <form onSubmit={submitAirtelPayment} className="space-y-4">
+                  <div>
+                    <p className="text-xs text-gray-400 mb-2">Send money to:</p>
+                    <p className="font-bold text-lg text-orange-500">+256 747 816 444</p>
+                    <p className="text-xs text-gray-400">DJ ENOCH PRO</p>
+                  </div>
+
+                  <input
+                    type="text"
+                    placeholder="Transaction ID"
+                    value={tid}
+                    onChange={(e) => setTid(e.target.value)}
+                    className="w-full bg-black p-3 rounded-lg border border-white/10 focus:border-orange-500 focus:outline-none"
+                    disabled={loading}
+                  />
+
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-2">Upload proof screenshot</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setProof(e.target.files?.[0] || null)}
+                      className="w-full text-xs border border-dashed border-white/20 p-3 rounded-lg hover:border-orange-500 transition"
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-orange-600 py-3 rounded-lg font-black uppercase hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? "Sending..." : "Submit Proof"}
+                  </button>
+                </form>
+              )}
+
+              <p className="text-xs text-gray-500 mt-4 text-center">
+                Your payment information is secure and encrypted
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
