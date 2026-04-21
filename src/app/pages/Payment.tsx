@@ -65,7 +65,7 @@ export default function Payment() {
             currency: 'UGX',
             description: `DJ Enoch ${item.type.charAt(0).toUpperCase() + item.type.slice(1)}: ${item.name}`,
             customerEmail: user.email,
-            customerName: user.user_metadata?.full_name || user.email,
+            customerName: user.name || user.email,
             userId: user.id,
             itemId: item.id,
             itemType: item.type,
@@ -82,6 +82,10 @@ export default function Payment() {
       
       if (data.error) {
         throw new Error(data.error);
+      }
+
+      if (!data.redirectUrl) {
+        throw new Error('No payment redirect URL received');
       }
 
       setOrderTrackingId(data.orderTrackingId);
