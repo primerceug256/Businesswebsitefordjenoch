@@ -6,7 +6,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 
 export default function App() {
   // Replace with your actual Google Client ID from Google Console
-  const GOOGLE_CLIENT_ID = process.env.VITE_GOOGLE_CLIENT_ID || '';
+  const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
