@@ -1,217 +1,59 @@
 import { Hono } from "npm:hono";
 import { cors } from "npm:hono/cors";
-import * as auth from "./auth.tsx";
 import * as kv from "./kv_store.tsx";
 import * as music from "./music.tsx";
-import * as payments from "./payments.tsx";
+import * as pesapal from "./pesapal_logic.tsx";
 
 const app = new Hono();
 app.use("*", cors());
 
-// ==================== PROFILE & TIMER ====================
-app.post("/make-98d801c7-music/profile/update", async (c) => {
-  const fd = await c.req.formData();
-  const userId = fd.get("userId") as string;
-  const user = await kv.get(`user:${userId}`);
-  if (!user) return c.json({ error: "User not found" }, 404);
-
-  user.name = fd.get("name") || user.name;
-  const avatar = fd.get("avatar") as File;
-  if (avatar) {
-    const res = await music.uploadMusicFile(`avatars/${userId}`, await avatar.arrayBuffer(), avatar.type);
-    user.avatarUrl = res.publicUrl;
-  }
-  await kv.set(`user:${userId}`, user);
-  return c.json({ success: true, user });
-});
-
-// ==================== DELETE LOGIC ====================
-app.delete("/make-98d801c7-music/:type/delete/:id", async (c) => {
-  const { type, id } = c.req.param();
-  const key = `${type}:${id}`;
-  const item = await kv.get(key);
-  if (item?.fileName) await music.deleteTrack(id, item.fileName);
-  if (item?.thumbPath) await music.deleteTrack(id, item.thumbPath);
-  await kv.del(key);
-  return c.json({ success: true });
-});
-
-// ==================== PAYMENTS & ORDERS ====================
-app.post("/make-98d801c7-music/payments/submit", async (c) => {
+// 1. START PESAPAL PAYMENT
+app.post("/make-server-98d801c7/payments/initiate-pesapal", async (c) => {
   try {
-    const fd = await c.req.formData();
-    const id = `pay-${Date.now()}`;
-    const proof = fd.get("proof") as File;
-    const res = await music.uploadMusicFile(`proofs/${id}`, await proof.arrayBuffer(), proof.type);
+    const { orderId, total, email, name, items, userId } = await c.req.json();
+    const token = await pesapal.getPesapalToken();
+    const ipnId = await pesapal.registerIPN(token);
+    
+    const orderRequest = await pesapal.createPesapalOrder(token, ipnId, { orderId, total, email, name });
 
-    const data = {
-      id,
-      userId: fd.get("userId"),
-      userCode: fd.get("userCode"),
-      userName: fd.get("userName"),
-      items: fd.get("items"),
-      total: fd.get("total"),
-      transactionId: fd.get("transactionId"),
-      proofUrl: res.publicUrl,
-      status: "pending",
-      createdAt: new Date().toISOString()
-    };
-    await kv.set(`payment:${id}`, data);
-    await kv.set(`payment:pending:${id}`, id);
-    return c.json({ success: true });
-  } catch (e) { return c.json({ error: "Fail" }, 500); }
+    // Save pending order
+    await kv.set(`order:${orderId}`, { id: orderId, userId, items, total, status: "pending", createdAt: new Date().toISOString() });
+    
+    return c.json({ redirect_url: orderRequest.redirect_url });
+  } catch (e) { return c.json({ error: String(e) }, 500); }
 });
 
-app.get("/make-98d801c7-music/admin/pending", async (c) => {
-  try {
-    const paymentsList = await payments.getPendingPayments();
-    const enriched = await Promise.all(paymentsList.map(async (payment) => {
-      const user = await kv.get(`user:${payment.userId}`);
-      return { ...payment, userCode: user?.code || null };
-    }));
-    return c.json(enriched);
-  } catch (e) {
-    return c.json({ error: "Unable to load pending payments" }, 500);
-  }
-});
+// 2. PESAPAL IPN (AUTOMATIC VERIFICATION)
+app.get("/make-server-98d801c7/payments/pesapal-ipn", async (c) => {
+  const trackingId = c.req.query("OrderTrackingId");
+  const reference = c.req.query("OrderMerchantReference");
 
-app.post("/make-98d801c7-music/admin/process-approval", async (c) => {
-  try {
-    const body = await c.req.json();
-    const { action, paymentId, requestType, dropId } = body as any;
+  if (trackingId && reference) {
+    const token = await pesapal.getPesapalToken();
+    const res = await fetch(`https://cybil.pesapal.com/api/Transactions/GetTransactionStatus?orderTrackingId=${trackingId}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+    });
+    const data = await res.json();
 
-    if (requestType === 'drop') {
-      const drop = await kv.get(`drop:${dropId}`);
-      if (!drop) return c.json({ error: 'Drop order not found' }, 404);
-
-      drop.status = action === 'accept' ? 'completed' : 'rejected';
-      if (action === 'accept') {
-        drop.dropUrl = drop.dropUrl || `https://example.com/drops/${dropId}`;
-      }
-      await kv.set(`drop:${dropId}`, drop);
-      await kv.del(`drop:pending:${dropId}`);
-      return c.json({ success: true });
+    if (data.payment_status_description === "Completed") {
+        const order = await kv.get(`order:${reference}`);
+        if (order) {
+            order.status = "completed";
+            await kv.set(`order:${reference}`, order);
+            // Auto-unlock software/music downloads here
+        }
     }
-
-    if (action === 'accept') {
-      await payments.approvePayment(paymentId);
-    } else {
-      await payments.rejectPayment(paymentId);
-    }
-    return c.json({ success: true });
-  } catch (e) {
-    return c.json({ error: "Approval processing failed" }, 500);
   }
+  return c.json({ status: "ok" });
 });
 
-app.post("/make-98d801c7-music/drops/order", async (c) => {
-  try {
-    const fd = await c.req.formData();
-    const id = `drop-${Date.now()}`;
-    const proof = fd.get("proof") as File;
-    const proofUpload = await music.uploadMusicFile(`drop-proofs/${id}`, await proof.arrayBuffer(), proof.type);
+// MUSIC TRACKS LIST
+app.get("/make-server-98d801c7/music/tracks", async (c) => c.json({ tracks: await kv.getByPrefix("track:") }));
 
-    const dropOrder = {
-      id,
-      userId: fd.get("userId"),
-      userCode: fd.get("userCode"),
-      djName: fd.get("djName"),
-      contact: fd.get("contact"),
-      email: fd.get("email"),
-      transactionId: fd.get("transactionId"),
-      proofUrl: proofUpload.publicUrl,
-      status: 'pending',
-      createdAt: new Date().toISOString()
-    };
+// MOVIE LIST
+app.get("/make-server-98d801c7/movies/list", async (c) => c.json({ movies: await kv.getByPrefix("movie:") }));
 
-    await kv.set(`drop:${id}`, dropOrder);
-    await kv.set(`drop:pending:${id}`, id);
-    return c.json({ success: true });
-  } catch (e) {
-    return c.json({ error: "Fail" }, 500);
-  }
-});
-
-app.post("/make-98d801c7-music/web-development/order", async (c) => {
-  try {
-    const fd = await c.req.formData();
-    const id = `webdev-${Date.now()}`;
-
-    const webDevInquiry = {
-      id,
-      userId: fd.get("userId"),
-      name: fd.get("name"),
-      email: fd.get("email"),
-      phone: fd.get("phone"),
-      websiteType: fd.get("websiteType"),
-      features: fd.get("features"),
-      budget: fd.get("budget"),
-      timeline: fd.get("timeline"),
-      description: fd.get("description"),
-      status: 'pending',
-      createdAt: new Date().toISOString()
-    };
-
-    await kv.set(`webdev:${id}`, webDevInquiry);
-    await kv.set(`webdev:pending:${id}`, id);
-    return c.json({ success: true });
-  } catch (e) {
-    return c.json({ error: "Fail" }, 500);
-  }
-});
-
-app.get("/make-98d801c7-music/drops/list", async (c) => {
-  const drops = (await kv.getByPrefix("drop:")).filter((drop: any) => drop && typeof drop === 'object' && 'status' in drop);
-  return c.json({ drops });
-});
-
-app.get("/make-98d801c7-music/drops/user/:id", async (c) => {
-  const userId = c.req.param("id");
-  const drops = (await kv.getByPrefix("drop:")).filter((drop: any) => drop && typeof drop === 'object' && drop.userId === userId);
-  return c.json(drops);
-});
-
-// ==================== UPLOAD (MEDIA + THUMB) ====================
-app.post("/make-98d801c7-music/:category/upload", async (c) => {
-  const category = c.req.param("category");
-  const fd = await c.req.formData();
-  const file = fd.get("file") as File;
-  const thumb = fd.get("thumbnail") as File;
-  
-  const media = await music.uploadMusicFile(file.name, await file.arrayBuffer(), file.type);
-  
-  let thumbImg = null;
-  if (thumb) {
-    thumbImg = await music.uploadMusicFile(`thumbs/${Date.now()}`, await thumb.arrayBuffer(), thumb.type);
-  }
-
-  const id = `item-${Date.now()}`;
-  const data = {
-    id, title: fd.get("title"), 
-    audioUrl: media.publicUrl, videoUrl: media.publicUrl, downloadUrl: media.publicUrl,
-    thumbnailUrl: thumbImg ? thumbImg.publicUrl : null, 
-    fileName: media.fileName, 
-    thumbPath: thumbImg ? thumbImg.fileName : null,
-    platform: fd.get("platform") || "Windows", 
-    price: fd.get("price") || "0",
-    // Add additional fields for movies
-    description: fd.get("description") || "",
-    genre: fd.get("genre") || "",
-    duration: fd.get("duration") || "",
-    releaseYear: fd.get("releaseYear") || "",
-    quality: fd.get("quality") || "",
-    // Add music-specific fields
-    artist: fd.get("artist") || "",
-    releaseDate: fd.get("releaseDate") || "",
-    mediaType: fd.get("mediaType") || "audio"
-  };
-  const prefix = category === 'music' ? 'track' : category === 'movies' ? 'movie' : 'software';
-  await kv.set(`${prefix}:${id}`, data);
-  return c.json({ success: true });
-});
-
-app.get("/make-98d801c7-music/music/tracks", async (c) => c.json({ tracks: await kv.getByPrefix("track:") }));
-app.get("/make-98d801c7-music/movies/list", async (c) => c.json({ movies: await kv.getByPrefix("movie:") }));
-app.get("/make-98d801c7-music/software/list", async (c) => c.json({ software: await kv.getByPrefix("software:") }));
+// SOFTWARE LIST
+app.get("/make-server-98d801c7/software/list", async (c) => c.json({ software: await kv.getByPrefix("software:") }));
 
 Deno.serve(app.fetch);
