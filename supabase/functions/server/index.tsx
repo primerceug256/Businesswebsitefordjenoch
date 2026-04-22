@@ -37,7 +37,7 @@ app.use(
 // ==================== AUTH ENDPOINTS ====================
 
 // Signup
-app.post("/make-server-98d801c7/auth/signup", async (c) => {
+app.post("/auth/signup", async (c) => {
   try {
     const { email, password, name } = await c.req.json();
     const user = await auth.signup(email, password, name);
@@ -53,7 +53,7 @@ app.post("/make-server-98d801c7/auth/signup", async (c) => {
 });
 
 // Login
-app.post("/make-server-98d801c7/auth/login", async (c) => {
+app.post("/auth/login", async (c) => {
   try {
     const { email, password } = await c.req.json();
     const user = await auth.login(email, password);
@@ -69,7 +69,7 @@ app.post("/make-server-98d801c7/auth/login", async (c) => {
 });
 
 // Google OAuth Login
-app.post("/make-server-98d801c7/auth/google", async (c) => {
+app.post("/auth/google", async (c) => {
   try {
     console.log("Google login request received");
     const body = await c.req.json();
@@ -93,7 +93,7 @@ app.post("/make-server-98d801c7/auth/google", async (c) => {
 });
 
 // Update user profile
-app.put("/make-server-98d801c7/user/update", async (c) => {
+app.put("/user/update", async (c) => {
   try {
     const { userId, ...updates } = await c.req.json();
     const user = await auth.updateUser(userId, updates);
@@ -113,7 +113,7 @@ app.get("/make-server-98d801c7/health", (c) => {
 });
 
 // Upload music file
-app.post("/make-server-98d801c7/music/upload", async (c) => {
+app.post("/music/upload", async (c) => {
   try {
     const formData = await c.req.formData();
     const file = formData.get("file") as File;
@@ -194,7 +194,7 @@ app.delete("/make-server-98d801c7/music/tracks/:trackId", async (c) => {
 // ==================== MOVIES ENDPOINTS ====================
 
 // Upload movie file
-app.post("/make-server-98d801c7/movies/upload", async (c) => {
+app.post("/movies/upload", async (c) => {
   try {
     const formData = await c.req.formData();
     const file = formData.get("file") as File;
@@ -292,7 +292,7 @@ app.delete("/make-server-98d801c7/movies/:movieId", async (c) => {
 // ==================== SOFTWARE ENDPOINTS ====================
 
 // Upload software file
-app.post("/make-server-98d801c7/software/upload", async (c) => {
+app.post("/software/upload", async (c) => {
   try {
     const formData = await c.req.formData();
     const file = formData.get("file") as File;
@@ -372,7 +372,7 @@ app.delete("/make-server-98d801c7/software/:softwareId", async (c) => {
 // ==================== PAYMENTS ENDPOINTS ====================
 
 // Submit payment for approval
-app.post("/make-server-98d801c7/payments/submit", async (c) => {
+app.post("/payments/submit", async (c) => {
   try {
     const formData = await c.req.formData();
     const userId = formData.get("userId") as string;
@@ -418,7 +418,7 @@ app.get("/make-server-98d801c7/payments/pending", async (c) => {
 });
 
 // Approve payment (admin only)
-app.post("/make-server-98d801c7/payments/:paymentId/approve", async (c) => {
+app.post("/payments/:paymentId/approve", async (c) => {
   try {
     const paymentId = c.req.param("paymentId");
     await payments.approvePayment(paymentId);
@@ -430,7 +430,7 @@ app.post("/make-server-98d801c7/payments/:paymentId/approve", async (c) => {
 });
 
 // Reject payment (admin only)
-app.post("/make-server-98d801c7/payments/:paymentId/reject", async (c) => {
+app.post("/payments/:paymentId/reject", async (c) => {
   try {
     const paymentId = c.req.param("paymentId");
     await payments.rejectPayment(paymentId);
@@ -444,7 +444,7 @@ app.post("/make-server-98d801c7/payments/:paymentId/reject", async (c) => {
 // ==================== ORDERS ENDPOINTS ====================
 
 // Create new order
-app.post("/make-server-98d801c7/orders/create", async (c) => {
+app.post("/orders/create", async (c) => {
   try {
     const body = await c.req.json();
     const order = await orders.createOrder(body);
@@ -461,7 +461,7 @@ app.post("/make-server-98d801c7/orders/create", async (c) => {
 });
 
 // Confirm payment and deliver products
-app.post("/make-server-98d801c7/orders/:orderId/confirm", async (c) => {
+app.post("/orders/:orderId/confirm", async (c) => {
   try {
     const orderId = c.req.param("orderId");
     const order = await orders.getOrder(orderId) as orders.Order;
@@ -508,7 +508,7 @@ app.get("/make-server-98d801c7/orders/:orderId", async (c) => {
 // ==================== EVENT BOOKINGS ENDPOINTS ====================
 
 // Submit event booking
-app.post("/make-server-98d801c7/event-bookings/submit", async (c) => {
+app.post("/event-bookings/submit", async (c) => {
   try {
     const bookingData = await c.req.json();
     const bookingId = `booking-${Date.now()}`;
@@ -547,7 +547,7 @@ app.get("/make-server-98d801c7/event-bookings/list", async (c) => {
 // ==================== DJ DROPS ENDPOINTS ====================
 
 // Submit DJ drop order
-app.post("/make-server-98d801c7/dj-drops/submit", async (c) => {
+app.post("/dj-drops/submit", async (c) => {
   try {
     const formData = await c.req.formData();
     const djName = formData.get("djName") as string;
