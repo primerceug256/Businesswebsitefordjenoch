@@ -12,7 +12,6 @@ import Nonstop from "./pages/Nonstop";
 import Subscription from "./pages/Subscription";
 import LearnMore from "./pages/LearnMore";
 import Cart from "./pages/Cart";
-import Software from "./pages/Software";
 import Contact from "./pages/Contact";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
@@ -34,7 +33,6 @@ export const router = createHashRouter([
       { path: "subscription", Component: Subscription },
       { path: "learn-more", Component: LearnMore },
       { path: "cart", Component: Cart },
-      { path: "software", Component: Software },
       { path: "contact", Component: Contact },
       { path: "profile", Component: Profile },
       { path: "*", Component: NotFound },

@@ -8,14 +8,14 @@ interface AuthContextType {
   user: User | null; isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
+  googleLogin: (credential: string) => Promise<void>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// CLEAN URL - No subfolders
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music`;
+// Correct URL for the Supabase Function - includes the server namespace
+const API_URL = `https://${projectId}.supabase.co/functions/v1/server/make-server-98d801c7`;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const login = async (email: string, password: string) => {
-    const res = await fetch(`${API_URL}/auth/signin`, { // EXACT PATH REQUESTED BY SERVER
+    const res = await fetch(`${API_URL}/auth/login`, { // Use /login to match server endpoint
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${publicAnonKey}` },
       body: JSON.stringify({ email, password }),
@@ -84,11 +84,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('dj_user', JSON.stringify(data.user));
   };
 
-  const loginWithGoogle = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin }
-    });
+  const googleLogin = async (credential: string) => {
+    try {
+      const res = await fetch(`${API_URL}/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${publicAnonKey}` },
+        body: JSON.stringify({ credential }),
+      });
+
+      const text = await res.text();
+      let data;
+      try { 
+        data = JSON.parse(text); 
+      } catch (e) { 
+        throw new Error("Server said: " + text); 
+      }
+
+      if (!res.ok) throw new Error(data.error || 'Google login failed');
+      setUser(data.user);
+      localStorage.setItem('dj_user', JSON.stringify(data.user));
+    } catch (err) {
+      throw new Error('Google authentication failed: ' + String(err));
+    }
   };
 
   const logout = async () => {
@@ -101,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdmin = user?.email === 'primerceug@gmail.com';
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin, login, signup, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, isAdmin, login, signup, googleLogin, logout }}>
       {!loading && children}
     </AuthContext.Provider>
   );
