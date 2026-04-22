@@ -14,8 +14,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Correct URL for the Supabase Function - points to the make-98d801c7-music function
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music`;
+// Correct URL for the Supabase Function - points to the make-server-98d801c7 function
+const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-98d801c7`;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
