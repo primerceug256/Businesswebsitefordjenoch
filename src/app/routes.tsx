@@ -14,6 +14,9 @@ import LearnMore from "./pages/LearnMore";
 import Cart from "./pages/Cart";
 import Contact from "./pages/Contact";
 import Profile from "./pages/Profile";
+import EventBooking from "./pages/EventBooking";
+import DJDrops from "./pages/DJDrops";
+import MoviePlayer from "./pages/MoviePlayer";
 import NotFound from "./pages/NotFound";
 
 export const router = createHashRouter([
@@ -35,6 +38,9 @@ export const router = createHashRouter([
       { path: "cart", Component: Cart },
       { path: "contact", Component: Contact },
       { path: "profile", Component: Profile },
+      { path: "event-booking", Component: EventBooking },
+      { path: "dj-drops", Component: DJDrops },
+      { path: "movie-player", Component: MoviePlayer },
       { path: "*", Component: NotFound },
     ],
   },
