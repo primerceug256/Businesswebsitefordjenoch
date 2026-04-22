@@ -14,7 +14,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// USING YOUR EXACT PATH
+// CLEAN URL - No subfolders
 const API_URL = `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music`;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -37,13 +37,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUser({ id: session.user.id, email: session.user.email ?? '', name: session.user.user_metadata?.name });
+      } else if (_event === 'SIGNED_OUT') {
+        setUser(null);
       }
     });
     return () => subscription.unsubscribe();
   }, []);
 
   const signup = async (email: string, password: string, name: string) => {
-    const res = await fetch(`${API_URL}/auth/signup`, {
+    const res = await fetch(`${API_URL}/auth/signup`, { // EXACT PATH REQUESTED BY SERVER
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${publicAnonKey}` },
       body: JSON.stringify({ email, password, name }),
@@ -54,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try { 
       data = JSON.parse(text); 
     } catch (e) { 
-      throw new Error(text || 'Signup failed on server'); 
+      throw new Error("Server said: " + text); 
     }
 
     if (!res.ok) throw new Error(data.error || 'Signup Failed');
@@ -63,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const login = async (email: string, password: string) => {
-    const res = await fetch(`${API_URL}/auth/signin`, {
+    const res = await fetch(`${API_URL}/auth/signin`, { // EXACT PATH REQUESTED BY SERVER
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${publicAnonKey}` },
       body: JSON.stringify({ email, password }),
@@ -74,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try { 
       data = JSON.parse(text); 
     } catch (e) { 
-      throw new Error(text || 'Invalid Login response'); 
+      throw new Error("Server said: " + text); 
     }
 
     if (!res.ok) throw new Error(data.error || 'Login Failed');
