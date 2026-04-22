@@ -1,98 +1,105 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { projectId, publicAnonKey } from '@utils/supabase/info';
+import { supabase } from './supabaseClient';
+import { publicAnonKey, projectId } from '@utils/supabase/info';
 
-interface User {
-  id: string;
-  email: string;
-  name?: string;
-}
+interface User { id: string; email: string; name?: string; }
 
 interface AuthContextType {
-  user: User | null;
-  isAdmin: boolean;
+  user: User | null; isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// THIS IS THE BASE URL FOR YOUR EDGE FUNCTION
-const API_BASE = `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music`;
+// USING YOUR EXACT PATH
+const API_URL = `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music`;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('dj_user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        localStorage.removeItem('dj_user');
+    const initAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser({ id: session.user.id, email: session.user.email ?? '', name: session.user.user_metadata?.name });
+      } else {
+        const stored = localStorage.getItem('dj_user');
+        if (stored) setUser(JSON.parse(stored));
       }
-    }
-    setLoading(false);
+      setLoading(false);
+    };
+    initAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser({ id: session.user.id, email: session.user.email ?? '', name: session.user.user_metadata?.name });
+      }
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   const signup = async (email: string, password: string, name: string) => {
-    const response = await fetch(`${API_BASE}/make-server-98d801c7/auth/signup`, {
+    const res = await fetch(`${API_URL}/auth/signup`, {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json', 
-        'Authorization': `Bearer ${publicAnonKey}` 
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${publicAnonKey}` },
       body: JSON.stringify({ email, password, name }),
     });
 
-    const text = await response.text();
+    const text = await res.text();
     let data;
-    try {
-      data = JSON.parse(text);
-    } catch (e) {
+    try { 
+      data = JSON.parse(text); 
+    } catch (e) { 
       throw new Error(text || 'Signup failed on server'); 
     }
 
-    if (!response.ok) throw new Error(data.error || 'Signup failed');
+    if (!res.ok) throw new Error(data.error || 'Signup Failed');
     setUser(data.user);
     localStorage.setItem('dj_user', JSON.stringify(data.user));
   };
 
   const login = async (email: string, password: string) => {
-    // MATCHES YOUR BACKEND PATH EXACTLY TO AVOID 404
-    const response = await fetch(`${API_BASE}/make-server-98d801c7/auth/login`, {
+    const res = await fetch(`${API_URL}/auth/signin`, {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json', 
-        'Authorization': `Bearer ${publicAnonKey}` 
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${publicAnonKey}` },
       body: JSON.stringify({ email, password }),
     });
 
-    const text = await response.text();
+    const text = await res.text();
     let data;
-    try {
-      data = JSON.parse(text);
-    } catch (e) {
-      throw new Error(text || 'Invalid Login Response');
+    try { 
+      data = JSON.parse(text); 
+    } catch (e) { 
+      throw new Error(text || 'Invalid Login response'); 
     }
 
-    if (!response.ok) throw new Error(data.error || 'Login failed');
+    if (!res.ok) throw new Error(data.error || 'Login Failed');
     setUser(data.user);
     localStorage.setItem('dj_user', JSON.stringify(data.user));
   };
 
-  const logout = () => {
+  const loginWithGoogle = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin }
+    });
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
     localStorage.removeItem('dj_user');
-    window.location.href = '/'; 
+    window.location.href = '/';
   };
 
   const isAdmin = user?.email === 'primerceug@gmail.com';
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, isAdmin, login, signup, loginWithGoogle, logout }}>
       {!loading && children}
     </AuthContext.Provider>
   );
