@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase } from './supabaseClient';
+import { projectId, publicAnonKey } from '@utils/supabase/info';
 
 interface User {
   id: string;
@@ -12,61 +12,81 @@ interface AuthContextType {
   isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
-  logout: () => Promise<void>;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// THIS IS THE BASE URL FOR YOUR EDGE FUNCTION
+const API_BASE = `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music`;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Automatically restores session from browser storage
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser({
-          id: session.user.id,
-          email: session.user.email ?? '',
-          name: session.user.user_metadata?.name,
-        });
+    const storedUser = localStorage.getItem('dj_user');
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        localStorage.removeItem('dj_user');
       }
-      setLoading(false);
-    });
-
-    // 2. Listens for Login/Logout events
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setUser({
-          id: session.user.id,
-          email: session.user.email ?? '',
-          name: session.user.user_metadata?.name,
-        });
-      } else {
-        setUser(null);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    }
+    setLoading(false);
   }, []);
 
   const signup = async (email: string, password: string, name: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { name } },
+    const response = await fetch(`${API_BASE}/make-server-98d801c7/auth/signup`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json', 
+        'Authorization': `Bearer ${publicAnonKey}` 
+      },
+      body: JSON.stringify({ email, password, name }),
     });
-    if (error) throw error;
+
+    const text = await response.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      throw new Error(text || 'Signup failed on server'); 
+    }
+
+    if (!response.ok) throw new Error(data.error || 'Signup failed');
+    setUser(data.user);
+    localStorage.setItem('dj_user', JSON.stringify(data.user));
   };
 
   const login = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+    // MATCHES YOUR BACKEND PATH EXACTLY TO AVOID 404
+    const response = await fetch(`${API_BASE}/make-server-98d801c7/auth/login`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json', 
+        'Authorization': `Bearer ${publicAnonKey}` 
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const text = await response.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      throw new Error(text || 'Invalid Login Response');
+    }
+
+    if (!response.ok) throw new Error(data.error || 'Login failed');
+    setUser(data.user);
+    localStorage.setItem('dj_user', JSON.stringify(data.user));
   };
 
-  const logout = async () => {
-    await supabase.auth.signOut();
+  const logout = () => {
     setUser(null);
+    localStorage.removeItem('dj_user');
+    window.location.href = '/'; 
   };
 
   const isAdmin = user?.email === 'primerceug@gmail.com';
