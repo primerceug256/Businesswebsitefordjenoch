@@ -1,78 +1,107 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from './supabaseClient';
+import { publicAnonKey, projectId } from '@utils/supabase/info';
 
-interface User {
-  id: string;
-  email: string;
-  name?: string;
-}
+interface User { id: string; email: string; name?: string; }
 
 interface AuthContextType {
-  user: User | null;
-  isAdmin: boolean;
+  user: User | null; isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
-  logout: () => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// CLEAN URL - No subfolders
+const API_URL = `https://${projectId}.supabase.co/functions/v1/make-98d801c7-music`;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Automatically restores session from browser storage
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const initAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        setUser({
-          id: session.user.id,
-          email: session.user.email ?? '',
-          name: session.user.user_metadata?.name,
-        });
+        setUser({ id: session.user.id, email: session.user.email ?? '', name: session.user.user_metadata?.name });
+      } else {
+        const stored = localStorage.getItem('dj_user');
+        if (stored) setUser(JSON.parse(stored));
       }
       setLoading(false);
-    });
+    };
+    initAuth();
 
-    // 2. Listens for Login/Logout events
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        setUser({
-          id: session.user.id,
-          email: session.user.email ?? '',
-          name: session.user.user_metadata?.name,
-        });
-      } else {
+        setUser({ id: session.user.id, email: session.user.email ?? '', name: session.user.user_metadata?.name });
+      } else if (_event === 'SIGNED_OUT') {
         setUser(null);
       }
     });
-
     return () => subscription.unsubscribe();
   }, []);
 
   const signup = async (email: string, password: string, name: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { name } },
+    const res = await fetch(`${API_URL}/auth/signup`, { // EXACT PATH REQUESTED BY SERVER
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${publicAnonKey}` },
+      body: JSON.stringify({ email, password, name }),
     });
-    if (error) throw error;
+
+    const text = await res.text();
+    let data;
+    try { 
+      data = JSON.parse(text); 
+    } catch (e) { 
+      throw new Error("Server said: " + text); 
+    }
+
+    if (!res.ok) throw new Error(data.error || 'Signup Failed');
+    setUser(data.user);
+    localStorage.setItem('dj_user', JSON.stringify(data.user));
   };
 
   const login = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+    const res = await fetch(`${API_URL}/auth/signin`, { // EXACT PATH REQUESTED BY SERVER
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${publicAnonKey}` },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const text = await res.text();
+    let data;
+    try { 
+      data = JSON.parse(text); 
+    } catch (e) { 
+      throw new Error("Server said: " + text); 
+    }
+
+    if (!res.ok) throw new Error(data.error || 'Login Failed');
+    setUser(data.user);
+    localStorage.setItem('dj_user', JSON.stringify(data.user));
+  };
+
+  const loginWithGoogle = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin }
+    });
   };
 
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    localStorage.removeItem('dj_user');
+    window.location.href = '/';
   };
 
   const isAdmin = user?.email === 'primerceug@gmail.com';
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, isAdmin, login, signup, loginWithGoogle, logout }}>
       {!loading && children}
     </AuthContext.Provider>
   );
